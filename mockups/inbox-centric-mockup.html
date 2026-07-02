@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UIモック — 受信箱中心レイアウト</title>
+    <style>
+      :root {
+        --background: #f7f6f3;
+        --foreground: #2b2b2f;
+        --card: #fefdfb;
+        --canvas: #faf9f6;
+        --primary: #3d4f7c;
+        --primary-fg: #f5f8ff;
+        --muted: #efeeea;
+        --muted-fg: #6f6e6a;
+        --border: #e6e4de;
+        --accent: #eef2fb;
+        --accent-fg: #3d4f7c;
+        --sidebar: #efeeea;
+        --sidebar-accent: #e3e2dc;
+        --radius: 10px;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.04);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          "Hiragino Sans",
+          "BIZ UDPGothic",
+          "Yu Gothic UI",
+          system-ui,
+          sans-serif;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--foreground);
+        background: #ddd;
+      }
+
+      .banner {
+        background: #1e293b;
+        color: #f8fafc;
+        padding: 10px 16px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .banner strong {
+        color: #93c5fd;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+      }
+
+      .tab {
+        border: 1px solid #475569;
+        background: transparent;
+        color: #e2e8f0;
+        padding: 6px 12px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .tab.active {
+        background: #3b82f6;
+        border-color: #3b82f6;
+        color: white;
+      }
+
+      .app {
+        height: calc(100vh - 46px);
+        display: flex;
+        background: var(--background);
+        overflow: hidden;
+      }
+
+      /* Pane1 */
+      .sidebar {
+        width: 220px;
+        flex-shrink: 0;
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-header {
+        padding: 14px 16px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .sidebar-group {
+        padding: 12px 10px;
+      }
+
+      .sidebar-label {
+        font-size: 11px;
+        color: var(--muted-fg);
+        margin: 0 8px 8px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+
+      .sidebar-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: transparent;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        color: inherit;
+        font: inherit;
+      }
+
+      .sidebar-item:hover {
+        background: var(--sidebar-accent);
+      }
+
+      .sidebar-item.active {
+        background: var(--primary);
+        color: var(--primary-fg);
+      }
+
+      /* Main */
+      .main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .topbar {
+        height: 48px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 14px;
+        background: var(--card);
+        flex-shrink: 0;
+      }
+
+      .breadcrumb {
+        font-size: 11px;
+        color: var(--muted-fg);
+      }
+
+      .breadcrumb b {
+        color: var(--foreground);
+      }
+
+      .spacer {
+        flex: 1;
+      }
+
+      .pill {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--muted);
+        color: var(--muted-fg);
+      }
+
+      .pill.saved {
+        color: #166534;
+        background: #ecfdf3;
+        border-color: #bbf7d0;
+      }
+
+      .workspace {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        overflow: hidden;
+      }
+
+      .center {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--canvas);
+        overflow: hidden;
+      }
+
+      .deal-header {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--canvas);
+        flex-shrink: 0;
+      }
+
+      .deal-header h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .deal-meta {
+        margin-top: 4px;
+        font-size: 13px;
+        color: var(--muted-fg);
+      }
+
+      .scroll-main {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 16px 20px 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+
+      .card-header {
+        padding: 16px 16px 0;
+      }
+
+      .card-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .card-desc {
+        margin: 4px 0 0;
+        font-size: 12px;
+        color: var(--muted-fg);
+      }
+
+      .card-body {
+        padding: 14px 16px 16px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 110px;
+        resize: vertical;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font: inherit;
+        background: white;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+
+      .btn {
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: var(--primary-fg);
+      }
+
+      .btn-outline {
+        background: white;
+        border-color: var(--border);
+        color: var(--foreground);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        border-color: var(--border);
+        color: var(--foreground);
+      }
+
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+
+      .analysis-box {
+        margin-top: 14px;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #c7d7f8;
+        background: #f3f7ff;
+      }
+
+      .analysis-box p {
+        margin: 0 0 10px;
+      }
+
+      .action-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .action-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: white;
+      }
+
+      .action-item.hit {
+        border-left: 3px solid var(--primary);
+        background: #f8faff;
+      }
+
+      .action-item .label {
+        flex: 1;
+        font-weight: 500;
+      }
+
+      .badge {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted-fg);
+        white-space: nowrap;
+      }
+
+      .badge.warn {
+        background: #fff7ed;
+        border-color: #fed7aa;
+        color: #9a3412;
+      }
+
+      .accordion {
+        overflow: hidden;
+      }
+
+      .accordion-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+        font: inherit;
+      }
+
+      .accordion-trigger .left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .accordion-trigger .title {
+        font-weight: 600;
+        font-size: 14px;
+      }
+
+      .accordion-trigger .sub {
+        font-size: 12px;
+        color: var(--muted-fg);
+      }
+
+      .chevron {
+        transition: transform 0.2s;
+        color: var(--muted-fg);
+      }
+
+      .accordion.open .chevron {
+        transform: rotate(180deg);
+      }
+
+      .accordion-body {
+        display: none;
+        padding: 0 16px 16px;
+      }
+
+      .accordion.open .accordion-body {
+        display: block;
+      }
+
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 10px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        cursor: pointer;
+      }
+
+      .check-row:hover {
+        background: var(--muted);
+      }
+
+      .check-row.hit {
+        border-color: #c7d7f8;
+        background: #f8faff;
+      }
+
+      .check-row .name {
+        flex: 1;
+        font-size: 13px;
+      }
+
+      .check-row .arrow {
+        color: var(--muted-fg);
+        font-size: 12px;
+      }
+
+      .reply-area {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fafafa;
+        font-size: 13px;
+        color: var(--muted-fg);
+        min-height: 80px;
+      }
+
+      .focus-chip {
+        display: inline-block;
+        margin-bottom: 8px;
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--accent);
+        color: var(--accent-fg);
+      }
+
+      /* Pane4 */
+      .pane4 {
+        width: 360px;
+        flex-shrink: 0;
+        border-left: 1px solid var(--border);
+        background: var(--card);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .pane4.collapsed {
+        width: 44px;
+      }
+
+      .pane4-header {
+        height: 48px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+
+      .pane4-header h2 {
+        flex: 1;
+        margin: 0;
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pane4-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px;
+      }
+
+      .field {
+        margin-bottom: 14px;
+      }
+
+      .field label {
+        display: block;
+        font-size: 11px;
+        color: var(--muted-fg);
+        margin-bottom: 4px;
+      }
+
+      .field select,
+      .field input,
+      .field textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font: inherit;
+        background: white;
+      }
+
+      .field textarea {
+        min-height: 72px;
+      }
+
+      .section-title {
+        font-size: 12px;
+        font-weight: 600;
+        margin: 16px 0 8px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      .section-title:first-child {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .note {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted-fg);
+      }
+
+      @media (max-width: 1100px) {
+        .pane4 {
+          display: none;
+        }
+        .banner::after {
+          content: "（幅が狭いと Pane4 は非表示のモックです）";
+          font-size: 11px;
+          opacity: 0.8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner">
+      <span
+        ><strong>UIモック</strong> — 受信箱中心・1列レイアウト（見た目確認用 /
+        機能なし）</span
+      >
+      <div class="tabs">
+        <button class="tab active" data-view="initial">① 初期状態</button>
+        <button class="tab" data-view="analyzed">② 解析後（メインフロー）</button>
+      </div>
+    </div>
+
+    <div class="app">
+      <!-- Pane1 -->
+      <aside class="sidebar">
+        <div class="sidebar-header">メーカー交渉</div>
+        <div class="sidebar-group">
+          <p class="sidebar-label">中国</p>
+          <button class="sidebar-item">Xfanic（深圳）</button>
+          <button class="sidebar-item active">world pass</button>
+        </div>
+        <div class="sidebar-group">
+          <p class="sidebar-label">台湾</p>
+          <button class="sidebar-item">台北ガジェット社</button>
+        </div>
+      </aside>
+
+      <div class="main">
+        <header class="topbar">
+          <div class="breadcrumb">中国 › <b>world pass</b></div>
+          <select style="font-size: 12px; padding: 4px 8px; border-radius: 6px">
+            <option>新規商品</option>
+            <option>SmartView Dock 5019D</option>
+          </select>
+          <span class="pill">未着手</span>
+          <div class="spacer"></div>
+          <span class="pill saved">保存済み</span>
+        </header>
+
+        <div class="workspace">
+          <!-- 中央 1列 -->
+          <section class="center">
+            <div class="deal-header">
+              <h1>新規商品</h1>
+              <div class="deal-meta">world pass · 進捗 <span id="progress">0/5</span></div>
+            </div>
+
+            <div class="scroll-main">
+              <!-- ① トーク受信箱（常時） -->
+              <article class="card">
+                <div class="card-header">
+                  <h2 class="card-title">トーク受信箱</h2>
+                  <p class="card-desc">
+                    メール・WeChat・LINEのやり取りを貼り付け → 未決事項を自動抽出
+                  </p>
+                </div>
+                <div class="card-body">
+                  <textarea placeholder="メール・WeChat・LINEのやり取りをここに貼り付け…"></textarea>
+                  <div class="btn-row">
+                    <button class="btn btn-primary">貼り付けて解析</button>
+                    <button class="btn btn-outline">解析プレビュー</button>
+                  </div>
+
+                  <!-- 解析後のみ表示 -->
+                  <div id="analyzed-only" class="hidden">
+                    <div class="analysis-box">
+                      <p><strong>解析サマリー:</strong> MOQと独占について確認が必要です。</p>
+                      <button class="btn btn-outline btn-sm">すべて要確認として反映</button>
+                    </div>
+
+                    <p style="margin: 14px 0 0; font-size: 12px; font-weight: 600; color: var(--muted-fg)">
+                      拾った未決事項（旧「次にやること」を統合）
+                    </p>
+                    <div class="action-list">
+                      <div class="action-item hit">
+                        <div class="label">MOQ（最低発注数量）</div>
+                        <span class="badge warn">要確認</span>
+                        <button class="btn btn-outline btn-sm">反映</button>
+                        <button class="btn btn-primary btn-sm">返信案</button>
+                      </div>
+                      <div class="action-item hit">
+                        <div class="label">独占権</div>
+                        <span class="badge warn">要確認</span>
+                        <button class="btn btn-outline btn-sm">反映</button>
+                        <button class="btn btn-primary btn-sm">返信案</button>
+                      </div>
+                      <div class="action-item">
+                        <div class="label">ビジネスモデル説明</div>
+                        <span class="badge">未着手</span>
+                        <button class="btn btn-outline btn-sm">反映</button>
+                        <button class="btn btn-ghost btn-sm">返信案</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              <!-- ② 返信アシスト -->
+              <article class="card accordion" id="reply-accordion">
+                <button class="accordion-trigger" type="button">
+                  <div class="left">
+                    <span class="title">返信アシスト</span>
+                    <span class="sub" id="reply-sub">トークを貼ると返信案を作成できます</span>
+                  </div>
+                  <span class="chevron">▼</span>
+                </button>
+                <div class="accordion-body">
+                  <span class="focus-chip" id="reply-focus" style="display: none">フォーカス: MOQ</span>
+                  <div class="btn-row" style="margin-top: 0">
+                    <select style="padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border)">
+                      <option>丁寧に確認</option>
+                      <option>条件を提案</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm">返信案を生成</button>
+                  </div>
+                  <div class="reply-area" style="margin-top: 10px">
+                    Dear team, thank you for your message. Regarding MOQ, could
+                    you please confirm whether 500 units would be acceptable for
+                    the first order…
+                  </div>
+                </div>
+              </article>
+
+              <!-- ③ 進捗・記録 -->
+              <article class="card accordion" id="record-accordion">
+                <button class="accordion-trigger" type="button">
+                  <div class="left">
+                    <span class="title">進捗・記録</span>
+                    <span class="sub" id="record-sub">チェックリスト · 添付ファイル</span>
+                  </div>
+                  <span class="chevron">▼</span>
+                </button>
+                <div class="accordion-body">
+                  <p class="note" style="margin-bottom: 10px">交渉チェックリスト</p>
+                  <div class="check-row hit" data-topic="MOQ">
+                    <span class="name">MOQ</span>
+                    <span class="badge warn">要確認</span>
+                    <span class="arrow">↗ Pane4</span>
+                  </div>
+                  <div class="check-row hit" data-topic="独占権">
+                    <span class="name">独占権</span>
+                    <span class="badge warn">要確認</span>
+                    <span class="arrow">↗ Pane4</span>
+                  </div>
+                  <div class="check-row">
+                    <span class="name">ビジネスモデル説明</span>
+                    <span class="badge">未着手</span>
+                    <span class="arrow">↗</span>
+                  </div>
+                  <div class="check-row">
+                    <span class="name">クラウドファンディング説明</span>
+                    <span class="badge">未着手</span>
+                    <span class="arrow">↗</span>
+                  </div>
+                  <div class="check-row">
+                    <span class="name">PSE / 認証</span>
+                    <span class="badge">未着手</span>
+                    <span class="arrow">↗</span>
+                  </div>
+
+                  <p class="note" style="margin: 16px 0 8px">添付ファイル（0件）</p>
+                  <button class="btn btn-outline btn-sm">ファイルを追加</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <!-- Pane4 -->
+          <aside class="pane4" id="pane4">
+            <div class="pane4-header">
+              <h2 id="pane4-title">（項目を選択）</h2>
+              <button class="btn btn-ghost btn-sm" type="button" id="pane4-close">⟩</button>
+            </div>
+            <div class="pane4-scroll" id="pane4-content">
+              <p class="note">チェックリストの行をクリックすると、ここに詳細が開きます。</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tabs = document.querySelectorAll(".tab");
+      const analyzedOnly = document.getElementById("analyzed-only");
+      const replyAccordion = document.getElementById("reply-accordion");
+      const recordAccordion = document.getElementById("record-accordion");
+      const replySub = document.getElementById("reply-sub");
+      const recordSub = document.getElementById("record-sub");
+      const replyFocus = document.getElementById("reply-focus");
+      const progress = document.getElementById("progress");
+      const pane4Title = document.getElementById("pane4-title");
+      const pane4Content = document.getElementById("pane4-content");
+
+      function setView(view) {
+        tabs.forEach((t) => t.classList.toggle("active", t.dataset.view === view));
+        const analyzed = view === "analyzed";
+        analyzedOnly.classList.toggle("hidden", !analyzed);
+        replyAccordion.classList.toggle("open", analyzed);
+        recordAccordion.classList.toggle("open", analyzed);
+        replySub.textContent = analyzed
+          ? "解析結果の下に展開 — 返信案をここで作成"
+          : "トークを貼ると返信案を作成できます";
+        recordSub.textContent = analyzed
+          ? "解析でヒットした項目を自動展開"
+          : "チェックリスト · 添付ファイル";
+        replyFocus.style.display = analyzed ? "inline-block" : "none";
+        progress.textContent = analyzed ? "2/5" : "0/5";
+        if (!analyzed) {
+          pane4Title.textContent = "（項目を選択）";
+          pane4Content.innerHTML =
+            '<p class="note">チェックリストの行をクリックすると、ここに詳細が開きます。</p>';
+        }
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => setView(tab.dataset.view));
+      });
+
+      document.querySelectorAll(".accordion-trigger").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          btn.closest(".accordion").classList.toggle("open");
+        });
+      });
+
+      document.querySelectorAll(".check-row").forEach((row) => {
+        row.addEventListener("click", () => {
+          const topic = row.dataset.topic || row.querySelector(".name").textContent;
+          pane4Title.textContent = topic;
+          pane4Content.innerHTML = `
+            <div class="section-title">ステータス</div>
+            <div class="field">
+              <label>進捗</label>
+              <select><option>要確認</option><option>合意済み</option><option>未着手</option></select>
+            </div>
+            <div class="section-title">送付テンプレ</div>
+            <button class="btn btn-outline btn-sm">テンプレをコピー</button>
+            <div class="section-title">メモ / トーク抜粋</div>
+            <div class="field"><label>メモ</label><textarea>メーカーに確認中</textarea></div>
+            <div class="field"><label>抜粋</label><textarea>MOQ 500pcs for first order?</textarea></div>
+            ${
+              topic === "MOQ" || topic === "独占権"
+                ? `<div class="section-title">確定値</div>
+                   <div class="field"><label>${topic}</label><input value="500" /></div>
+                   <button class="btn btn-outline btn-sm">確定する</button>`
+                : ""
+            }
+          `;
+          setView("analyzed");
+        });
+      });
+
+      setView("initial");
+    </script>
+  </body>
+</html>

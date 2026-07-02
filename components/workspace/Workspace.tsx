@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useMemo } from "react";
 
+import { DealSummaryBar } from "@/components/workspace/DealSummaryBar";
+import { SummaryRail } from "@/components/workspace/SummaryRail";
 import { useWorkspacePersistence } from "@/hooks/use-workspace-persistence";
 import type { WorkspaceStatePayload } from "@/lib/workspace-state";
 
@@ -22,7 +24,6 @@ import { getAttachmentTextContent } from "@/lib/attachment-text";
 import { looksLikeChatHistory } from "@/lib/pdf-extract";
 import { filesToAttachments } from "@/components/workspace/DealAttachmentsCard";
 import { resolveSuggestionExcerpt } from "@/lib/chat-excerpt";
-import { getDealProgressSummary } from "@/lib/computed/deals";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { GlobalHeader } from "@/components/workspace/GlobalHeader";
 import { PositionPane } from "@/components/workspace/PositionPane";
@@ -55,6 +56,18 @@ export function Workspace({
   const [externalInboxAnalysis, setExternalInboxAnalysis] = useState<
     (ChatAnalysisResult & { entryId: string }) | null
   >(null);
+  const [highlightTopicKeys, setHighlightTopicKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  const applyAnalysisHighlights = useCallback((suggestions: ChatSuggestion[]) => {
+    const keys = new Set(
+      suggestions
+        .filter((s) => s.scope && s.topicId)
+        .map((s) => `${s.scope}:${s.topicId}`),
+    );
+    setHighlightTopicKeys(keys);
+  }, []);
 
   const hydrateFromDatabase = useCallback((payload: WorkspaceStatePayload) => {
     setRegions(payload.regions);
@@ -495,9 +508,10 @@ export function Workspace({
       );
       const result = { ...analyzeChatText(content), entryId };
       setExternalInboxAnalysis(result);
+      applyAnalysisHighlights(result.suggestions);
       return result;
     },
-    [selectedDealId],
+    [selectedDealId, applyAnalysisHighlights],
   );
 
   const analyzeAttachment = useCallback(
@@ -651,7 +665,7 @@ export function Workspace({
   return (
     <SidebarProvider
       defaultOpen
-      className="h-svh max-h-svh w-full overflow-hidden bg-background text-foreground"
+      className="negotiation-console h-svh max-h-svh w-full overflow-hidden bg-background text-foreground"
     >
       <PositionPane
         workspaceName={workspace.name}
@@ -676,15 +690,20 @@ export function Workspace({
           persistenceStatus={persistenceStatus}
           persistenceError={persistenceError}
         />
-        <div className="flex h-full min-h-0 flex-1 overflow-hidden">
-          {activeDeal ? (
-            <>
+        {activeDeal ? (
+          <>
+            <DealSummaryBar
+              deal={activeDeal}
+              manufacturer={activeManufacturer}
+              onOpenTopic={(detail) => openDetail(detail)}
+            />
+            <div className="flex min-h-0 flex-1 overflow-hidden bg-[#ececea]">
               <CandidateDashboardPane
                 deal={activeDeal}
                 manufacturer={activeManufacturer}
+                manufacturerName={manufacturerTitle}
                 selectedDetail={selectedDetail}
                 onOpenDetail={openDetail}
-                progressSummary={getDealProgressSummary(activeDeal)}
                 onPasteChat={pasteChat}
                 onApplySuggestion={applySuggestion}
                 onApplyAllSuggestions={applyAllSuggestions}
@@ -692,27 +711,37 @@ export function Workspace({
                 onAnalyzeAttachment={analyzeAttachment}
                 externalInboxAnalysis={externalInboxAnalysis}
                 onConsumeExternalAnalysis={() => setExternalInboxAnalysis(null)}
+                highlightTopicKeys={highlightTopicKeys}
               />
-              <CandidateDetailPane
-                deal={activeDeal}
-                manufacturer={activeManufacturer}
-                selectedDetail={selectedDetail}
-                scrollAnchor={scrollAnchor}
-                onScrollAnchorConsumed={consumeScrollAnchor}
-                onUpdateDealTopic={updateDealTopic}
-                onUpdateManufacturerTopic={updateManufacturerTopic}
-                onUpdateDealTerms={updateDealTerms}
-                onConfirmDealTerm={confirmDealTerm}
-                pane4Open={pane4Open}
-                onTogglePane4={togglePane4}
-              />
-            </>
-          ) : (
-            <section className="flex min-w-0 flex-1 items-center justify-center bg-canvas px-8 text-center text-sm text-muted-foreground">
-              右上の「＋」から案件を追加すると、交渉チェックリストが表示されます
+              {pane4Open ? (
+                <CandidateDetailPane
+                  deal={activeDeal}
+                  manufacturer={activeManufacturer}
+                  selectedDetail={selectedDetail}
+                  scrollAnchor={scrollAnchor}
+                  onScrollAnchorConsumed={consumeScrollAnchor}
+                  onUpdateDealTopic={updateDealTopic}
+                  onUpdateManufacturerTopic={updateManufacturerTopic}
+                  onUpdateDealTerms={updateDealTerms}
+                  onConfirmDealTerm={confirmDealTerm}
+                  pane4Open
+                  onTogglePane4={togglePane4}
+                />
+              ) : (
+                <SummaryRail
+                  deal={activeDeal}
+                  manufacturer={activeManufacturer}
+                  onOpenTopic={(detail) => openDetail(detail)}
+                  onExpand={() => setPane4ManuallyClosed(false)}
+                />
+              )}
+            </div>
+          </>
+        ) : (
+            <section className="flex min-w-0 flex-1 items-center justify-center bg-[#ececea] px-8 text-center text-sm text-muted-foreground">
+              右上の「＋」から案件を追加すると、交渉作業台が表示されます
             </section>
           )}
-        </div>
       </SidebarInset>
     </SidebarProvider>
   );

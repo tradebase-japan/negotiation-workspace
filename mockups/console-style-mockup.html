@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UIモック — コンソール風（交渉ワークスペース）</title>
+    <style>
+      :root {
+        --sidebar: #1a4547;
+        --sidebar-hover: #245558;
+        --sidebar-active: #2f6b6e;
+        --sidebar-text: #e8f2f2;
+        --sidebar-muted: #9ec5c7;
+        --bg: #ececea;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --teal: #1a4547;
+        --teal-btn: #1a4547;
+        --green: #15803d;
+        --green-bg: #ecfdf3;
+        --red: #b91c1c;
+        --red-bg: #fef2f2;
+        --amber: #b45309;
+        --amber-bg: #fffbeb;
+        --radius: 8px;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          "Hiragino Sans",
+          "BIZ UDPGothic",
+          "Yu Gothic UI",
+          system-ui,
+          sans-serif;
+        font-size: 13px;
+        color: var(--text);
+        background: #111;
+      }
+
+      .banner {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .banner strong {
+        color: #7dd3fc;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 6px;
+      }
+
+      .tab {
+        border: 1px solid #475569;
+        background: transparent;
+        color: #cbd5e1;
+        padding: 5px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+
+      .tab.active {
+        background: #0ea5e9;
+        border-color: #0ea5e9;
+        color: white;
+      }
+
+      .app {
+        height: calc(100vh - 36px);
+        display: flex;
+        overflow: hidden;
+      }
+
+      /* ── Sidebar ── */
+      .sidebar {
+        width: 200px;
+        background: var(--sidebar);
+        color: var(--sidebar-text);
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+
+      .sidebar-brand {
+        padding: 14px 14px 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .sidebar-brand .icon {
+        font-size: 18px;
+        margin-bottom: 4px;
+      }
+
+      .sidebar-brand h1 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .sidebar-brand p {
+        margin: 2px 0 0;
+        font-size: 10px;
+        color: var(--sidebar-muted);
+        letter-spacing: 0.08em;
+      }
+
+      .sidebar-section {
+        padding: 10px 8px;
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .sidebar-label {
+        font-size: 10px;
+        color: var(--sidebar-muted);
+        padding: 6px 8px 4px;
+        letter-spacing: 0.06em;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        border: none;
+        background: transparent;
+        color: var(--sidebar-text);
+        padding: 8px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        font-size: 12px;
+      }
+
+      .nav-item:hover {
+        background: var(--sidebar-hover);
+      }
+
+      .nav-item.active {
+        background: var(--sidebar-active);
+      }
+
+      .nav-item .dot {
+        width: 14px;
+        text-align: center;
+        font-size: 10px;
+        opacity: 0.7;
+      }
+
+      /* ── Board (horizontal panes) ── */
+      .board {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        overflow-x: auto;
+        overflow-y: hidden;
+        background: var(--bg);
+      }
+
+      .pane {
+        min-width: 320px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #d4d4d0;
+        overflow: hidden;
+      }
+
+      .pane:last-child {
+        border-right: none;
+      }
+
+      .pane.narrow {
+        min-width: 280px;
+        max-width: 340px;
+        flex: 0 0 300px;
+      }
+
+      .pane-header {
+        padding: 12px 14px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+
+      .pane-header h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .pane-header .sub {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      .pane-scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .card {
+        background: var(--card);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        border: 1px solid #f0f0ee;
+      }
+
+      .card-pad {
+        padding: 12px 14px;
+      }
+
+      .card-title {
+        margin: 0 0 4px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .card-desc {
+        margin: 0 0 10px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .dropzone {
+        border: 1.5px dashed #c5d5d6;
+        border-radius: var(--radius);
+        background: #f8fafa;
+        padding: 20px 12px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .dropzone .icon {
+        font-size: 22px;
+        margin-bottom: 6px;
+        opacity: 0.5;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 88px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 10px;
+        font: inherit;
+        font-size: 12px;
+        resize: vertical;
+      }
+
+      .btn {
+        border-radius: 6px;
+        padding: 7px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+
+      .btn-teal {
+        background: var(--teal-btn);
+        color: white;
+      }
+
+      .btn-outline {
+        background: white;
+        border-color: var(--border);
+        color: var(--text);
+      }
+
+      .btn-ghost {
+        background: #f3f4f6;
+        border-color: #e5e7eb;
+        color: var(--text);
+      }
+
+      .btn-sm {
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+      }
+
+      .status-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: var(--green-bg);
+        border: 1px solid #bbf7d0;
+        font-size: 11px;
+        color: var(--green);
+      }
+
+      .status-bar .count {
+        margin-left: auto;
+        font-weight: 600;
+      }
+
+      .steps {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .action-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 12px;
+      }
+
+      .action-row:last-child {
+        border-bottom: none;
+      }
+
+      .action-row.hit {
+        background: #f0f9fa;
+        border-left: 3px solid var(--teal);
+        padding-left: 7px;
+      }
+
+      .action-row .name {
+        flex: 1;
+        font-weight: 500;
+      }
+
+      .tag {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 999px;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      .tag-green {
+        background: var(--green-bg);
+        color: var(--green);
+      }
+
+      .tag-red {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+
+      .tag-amber {
+        background: var(--amber-bg);
+        color: var(--amber);
+      }
+
+      .tag-gray {
+        background: #f3f4f6;
+        color: var(--muted);
+      }
+
+      /* Table (PL style) */
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+      }
+
+      th {
+        text-align: left;
+        padding: 8px 10px;
+        background: #f9fafb;
+        border-bottom: 1px solid var(--border);
+        color: var(--muted);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #f3f4f6;
+      }
+
+      tr:hover td {
+        background: #fafafa;
+      }
+
+      tr.selected td {
+        background: #eef6f6;
+      }
+
+      tr.hit td {
+        background: #f0f9fa;
+      }
+
+      tr {
+        cursor: pointer;
+      }
+
+      .num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .pct-up {
+        color: var(--green);
+      }
+
+      .pct-dn {
+        color: var(--red);
+      }
+
+      .comment-box {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px;
+        background: #fafafa;
+        font-size: 12px;
+        line-height: 1.55;
+        min-height: 72px;
+      }
+
+      .comment-item {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+
+      .comment-item .head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+
+      .comment-item .head strong {
+        font-size: 12px;
+      }
+
+      .field label {
+        display: block;
+        font-size: 10px;
+        color: var(--muted);
+        margin-bottom: 3px;
+      }
+
+      .field select,
+      .field input,
+      .field textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 7px 9px;
+        font: inherit;
+        font-size: 12px;
+      }
+
+      .field {
+        margin-bottom: 10px;
+      }
+
+      .graph-placeholder {
+        height: 100px;
+        border-radius: 6px;
+        background: linear-gradient(180deg, #faf6f0 0%, #f5efe6 100%);
+        border: 1px solid #ede4d6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #a08b6d;
+        font-size: 11px;
+      }
+
+      .mapping-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 0;
+        font-size: 11px;
+        border-bottom: 1px dashed #f0f0f0;
+      }
+
+      .mapping-row .from {
+        flex: 1;
+        color: var(--muted);
+      }
+
+      .mapping-row .arrow {
+        color: #9ca3af;
+      }
+
+      .mapping-row .to {
+        flex: 1;
+        font-weight: 500;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .pane-header .actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .close-x {
+        width: 28px;
+        height: 28px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* ── 重要条件サマリー（常時表示） ── */
+      .workspace-main {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .key-terms-bar {
+        flex-shrink: 0;
+        display: flex;
+        align-items: stretch;
+        background: var(--card);
+        border-bottom: 2px solid #d4e8e9;
+        box-shadow: var(--shadow);
+        overflow-x: auto;
+      }
+
+      .key-terms-bar .bar-title {
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        background: var(--teal);
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .kt-cell {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 8px 18px;
+        border-right: 1px solid var(--border);
+        min-width: 120px;
+        cursor: default;
+      }
+
+      .kt-cell.clickable {
+        cursor: pointer;
+      }
+
+      .kt-cell.clickable:hover {
+        background: #f0f9fa;
+      }
+
+      .kt-label {
+        font-size: 10px;
+        color: var(--muted);
+        letter-spacing: 0.03em;
+      }
+
+      .kt-value {
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+      }
+
+      .kt-sub {
+        font-size: 10px;
+        margin-top: 3px;
+        color: var(--muted);
+      }
+
+      .kt-cell.ok .kt-value {
+        color: var(--green);
+      }
+
+      .kt-cell.warn .kt-value {
+        color: var(--amber);
+      }
+
+      .kt-cell.bad .kt-value {
+        color: var(--red);
+      }
+
+      .kt-cell.muted .kt-value {
+        color: #9ca3af;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      /* Pane4 折り畳み時の右レール */
+      .pane-rail {
+        width: 56px;
+        flex: 0 0 56px;
+        background: var(--card);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px 4px;
+        gap: 10px;
+        overflow-y: auto;
+      }
+
+      .rail-chip {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 8px 4px;
+        text-align: center;
+        font-size: 9px;
+        line-height: 1.35;
+        color: var(--muted);
+        background: #fafafa;
+        cursor: pointer;
+      }
+
+      .rail-chip strong {
+        display: block;
+        font-size: 13px;
+        color: var(--text);
+        margin-bottom: 2px;
+      }
+
+      .rail-chip.ok {
+        border-color: #bbf7d0;
+        background: var(--green-bg);
+      }
+
+      .rail-chip.ok strong {
+        color: var(--green);
+      }
+
+      .rail-chip.warn {
+        border-color: #fde68a;
+        background: var(--amber-bg);
+      }
+
+      .rail-chip.warn strong {
+        color: var(--amber);
+      }
+
+      .rail-chip.bad strong {
+        color: var(--red);
+      }
+
+      .pane.narrow.collapsed {
+        display: none;
+      }
+
+      .board-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner">
+      <span
+        ><strong>コンソール風モック</strong> — 上部「重要条件」バーが常時表示 /
+        右レールは Pane4 折り畳み時</span
+      >
+      <div class="tabs">
+        <button class="tab active" data-view="initial">① 初期</button>
+        <button class="tab" data-view="analyzed">② 解析後</button>
+      </div>
+    </div>
+
+    <div class="app">
+      <!-- 左: メーカーリスト（会社リスト風） -->
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="icon">🌐</div>
+          <h1>メーカー一覧</h1>
+          <p>NEGOTIATION CONSOLE</p>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-label">グループ全体</div>
+          <button class="nav-item">
+            <span class="dot">▣</span> ダッシュボード
+          </button>
+
+          <div class="sidebar-label">中国</div>
+          <button class="nav-item">
+            <span class="dot">○</span> Xfanic（深圳）
+          </button>
+          <button class="nav-item active">
+            <span class="dot">●</span> world pass
+          </button>
+
+          <div class="sidebar-label">台湾</div>
+          <button class="nav-item">
+            <span class="dot">○</span> 台北ガジェット社
+          </button>
+        </div>
+      </aside>
+
+      <div class="workspace-main">
+        <!-- ★ 重要条件サマリー — スクロールしても常に見える -->
+        <div class="key-terms-bar" id="key-terms-bar">
+          <div class="bar-title">重要条件</div>
+          <div class="kt-cell warn clickable" data-topic="MOQ" id="kt-cell-moq" title="クリックで詳細">
+            <span class="kt-label">MOQ</span>
+            <span class="kt-value" id="kt-moq">—</span>
+            <span class="kt-sub" id="kt-moq-sub">未設定</span>
+          </div>
+          <div class="kt-cell muted clickable" data-topic="MOQ" id="kt-cell-zero">
+            <span class="kt-label">ゼロMOQ</span>
+            <span class="kt-value" id="kt-zero">—</span>
+            <span class="kt-sub" id="kt-zero-sub">未確認</span>
+          </div>
+          <div class="kt-cell muted clickable" data-topic="独占権" id="kt-cell-excl">
+            <span class="kt-label">独占権</span>
+            <span class="kt-value" id="kt-excl">—</span>
+            <span class="kt-sub" id="kt-excl-sub">未取得</span>
+          </div>
+          <div class="kt-cell muted">
+            <span class="kt-label">認証の持ち</span>
+            <span class="kt-value" id="kt-cert" style="font-size: 14px">—</span>
+            <span class="kt-sub" id="kt-cert-sub">未決</span>
+          </div>
+          <div class="kt-cell">
+            <span class="kt-label">進捗</span>
+            <span class="kt-value" id="kt-progress" style="font-size: 16px">0/5</span>
+            <span class="kt-sub">案件チェック</span>
+          </div>
+        </div>
+
+        <div class="board-wrap">
+      <div class="board">
+        <!-- Pane A: 作業台 -->
+        <section class="pane">
+          <header class="pane-header">
+            <div>
+              <h2>world pass 作業台</h2>
+              <div class="sub">新規商品 · トーク解析</div>
+            </div>
+            <span class="tag tag-gray" id="save-tag">保存済み</span>
+          </header>
+          <div class="pane-scroll">
+            <article class="card card-pad">
+              <h3 class="card-title">トーク貼付</h3>
+              <p class="card-desc">
+                WeChat / LINE / メールのログを貼り付け。MOQ・独占などを自動抽出します。
+              </p>
+              <div class="dropzone" id="dropzone">
+                <div class="icon">⬆</div>
+                ここにテキストを貼り付け<br />
+                <span style="font-size: 10px">または下の欄に直接入力</span>
+              </div>
+              <textarea
+                style="margin-top: 8px"
+                placeholder="メール・WeChat・LINEのやり取りをここに貼り付け…"
+              ></textarea>
+              <div class="btn-row">
+                <button class="btn btn-teal">貼り付けて解析</button>
+                <button class="btn btn-outline">プレビュー</button>
+              </div>
+            </article>
+
+            <article class="card card-pad">
+              <h3 class="card-title">作業手順メモ</h3>
+              <ol class="steps">
+                <li>最新のトークを貼り付ける</li>
+                <li>拾った未決事項を確認・反映</li>
+                <li>右のチェックリストで進捗を更新</li>
+                <li>返信案を作って送付</li>
+              </ol>
+            </article>
+
+            <div id="analyzed-status" class="status-bar hidden">
+              <span>✓</span> 解析完了
+              <span class="count">未決 3件</span>
+            </div>
+
+            <article class="card hidden" id="action-card">
+              <div class="card-pad" style="padding-bottom: 8px">
+                <h3 class="card-title">拾った未決事項</h3>
+                <p class="card-desc">解析結果 — 反映または返信案へ</p>
+              </div>
+              <div class="action-row hit">
+                <span class="name">MOQ</span>
+                <span class="tag tag-amber">要確認</span>
+                <button class="btn btn-outline btn-sm">反映</button>
+                <button class="btn btn-teal btn-sm">返信案</button>
+              </div>
+              <div class="action-row hit">
+                <span class="name">独占権</span>
+                <span class="tag tag-amber">要確認</span>
+                <button class="btn btn-outline btn-sm">反映</button>
+                <button class="btn btn-teal btn-sm">返信案</button>
+              </div>
+              <div class="action-row">
+                <span class="name">ビジネスモデル説明</span>
+                <span class="tag tag-gray">未着手</span>
+                <button class="btn btn-ghost btn-sm">反映</button>
+              </div>
+            </article>
+
+            <article class="card card-pad hidden" id="reply-card">
+              <h3 class="card-title">返信アシスト</h3>
+              <p class="card-desc">フォーカス: MOQ</p>
+              <div class="btn-row" style="margin-top: 0">
+                <button class="btn btn-teal btn-sm">返信案を生成</button>
+              </div>
+              <div class="comment-box" style="margin-top: 8px">
+                Dear team, thank you for your message. Regarding MOQ, could you
+                please confirm whether 500 units would be acceptable…
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Pane B: 交渉チェックリスト（PL表風） -->
+        <section class="pane">
+          <header class="pane-header">
+            <div>
+              <h2>新規商品 交渉表</h2>
+              <div class="sub">進捗 · 合意状況</div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-teal btn-sm">反映を確定</button>
+            </div>
+          </header>
+          <div class="pane-scroll" style="padding: 0">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>項目</th>
+                    <th class="num">状態</th>
+                    <th class="num">前回比</th>
+                    <th class="num">構成比</th>
+                  </tr>
+                </thead>
+                <tbody id="checklist-body">
+                  <tr data-topic="MOQ">
+                    <td>MOQ</td>
+                    <td class="num"><span class="tag tag-amber">要確認</span></td>
+                    <td class="num pct-up">NEW</td>
+                    <td class="num">20%</td>
+                  </tr>
+                  <tr data-topic="独占権">
+                    <td>独占権</td>
+                    <td class="num"><span class="tag tag-amber">要確認</span></td>
+                    <td class="num pct-up">NEW</td>
+                    <td class="num">20%</td>
+                  </tr>
+                  <tr>
+                    <td>ビジネスモデル説明</td>
+                    <td class="num"><span class="tag tag-gray">未着手</span></td>
+                    <td class="num">—</td>
+                    <td class="num">0%</td>
+                  </tr>
+                  <tr>
+                    <td>CF説明</td>
+                    <td class="num"><span class="tag tag-gray">未着手</span></td>
+                    <td class="num">—</td>
+                    <td class="num">0%</td>
+                  </tr>
+                  <tr>
+                    <td>4ステップ販路</td>
+                    <td class="num"><span class="tag tag-gray">未着手</span></td>
+                    <td class="num">—</td>
+                    <td class="num">0%</td>
+                  </tr>
+                  <tr>
+                    <td>認証の持ち</td>
+                    <td class="num"><span class="tag tag-gray">未着手</span></td>
+                    <td class="num">—</td>
+                    <td class="num">0%</td>
+                  </tr>
+                  <tr>
+                    <td>サンプル条件</td>
+                    <td class="num"><span class="tag tag-gray">未着手</span></td>
+                    <td class="num">—</td>
+                    <td class="num">0%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div style="padding: 12px">
+              <article class="card card-pad">
+                <h3 class="card-title">トピックマッピング</h3>
+                <p class="card-desc">トークのキーワード → チェック項目への対応</p>
+                <div class="mapping-row">
+                  <span class="from">"500pcs MOQ"</span>
+                  <span class="arrow">→</span>
+                  <span class="to">MOQ</span>
+                </div>
+                <div class="mapping-row">
+                  <span class="from">"exclusive distributor"</span>
+                  <span class="arrow">→</span>
+                  <span class="to">独占権</span>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pane C: 詳細（増減理由風 = Pane4） -->
+        <section class="pane narrow" id="detail-pane">
+          <header class="pane-header">
+            <div>
+              <h2 id="detail-title">項目詳細</h2>
+              <div class="sub">メモ · 確定値 · 返信</div>
+            </div>
+            <button class="close-x" type="button" id="collapse-detail" title="折りたたむ">×</button>
+          </header>
+          <div class="pane-scroll" id="detail-body">
+            <p style="color: var(--muted); font-size: 12px; margin: 0">
+              中央の表の行をクリックすると、ここに詳細が表示されます。
+            </p>
+          </div>
+        </section>
+      </div>
+
+        <!-- 折り畳み時: 右レールにも同じ情報を常時表示 -->
+        <aside class="pane-rail hidden" id="pane-rail">
+          <button class="rail-chip warn" type="button" data-topic="MOQ" id="rail-moq">
+            <strong>500</strong>MOQ
+          </button>
+          <button class="rail-chip" type="button" data-topic="MOQ" id="rail-zero">
+            <strong>0</strong>ゼロOK
+          </button>
+          <button class="rail-chip warn" type="button" data-topic="独占権" id="rail-excl">
+            <strong>?</strong>独占
+          </button>
+          <button class="rail-chip" type="button" id="rail-cert">
+            <strong>—</strong>認証
+          </button>
+          <button class="btn btn-outline btn-sm" type="button" id="expand-detail" style="margin-top: auto; writing-mode: horizontal-tb; width: 100%; padding: 6px 2px; font-size: 9px">
+            開く
+          </button>
+        </aside>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tabs = document.querySelectorAll(".tab");
+      const analyzedStatus = document.getElementById("analyzed-status");
+      const actionCard = document.getElementById("action-card");
+      const replyCard = document.getElementById("reply-card");
+      const detailTitle = document.getElementById("detail-title");
+      const detailBody = document.getElementById("detail-body");
+      const checklistBody = document.getElementById("checklist-body");
+      const detailPane = document.getElementById("detail-pane");
+      const paneRail = document.getElementById("pane-rail");
+      const collapseDetail = document.getElementById("collapse-detail");
+      const expandDetail = document.getElementById("expand-detail");
+
+      const summaryInitial = {
+        moq: "—",
+        moqSub: "未設定",
+        moqClass: "muted",
+        zero: "—",
+        zeroSub: "未確認",
+        zeroClass: "muted",
+        excl: "—",
+        exclSub: "未取得",
+        exclClass: "muted",
+        cert: "—",
+        certSub: "未決",
+        progress: "0/5",
+      };
+
+      const summaryAnalyzed = {
+        moq: "500",
+        moqSub: "要確認（AI抽出）",
+        moqClass: "warn",
+        zero: "0 OK",
+        zeroSub: "ゼロMOQ合意",
+        zeroClass: "ok",
+        excl: "未取得",
+        exclSub: "交渉中",
+        exclClass: "warn",
+        cert: "未決",
+        certSub: "確認中",
+        progress: "2/5",
+      };
+
+      function applySummary(data) {
+        document.getElementById("kt-moq").textContent = data.moq;
+        document.getElementById("kt-moq-sub").textContent = data.moqSub;
+        document.getElementById("kt-zero").textContent = data.zero;
+        document.getElementById("kt-zero-sub").textContent = data.zeroSub;
+        document.getElementById("kt-excl").textContent = data.excl;
+        document.getElementById("kt-excl-sub").textContent = data.exclSub;
+        document.getElementById("kt-cert").textContent = data.cert;
+        document.getElementById("kt-cert-sub").textContent = data.certSub;
+        document.getElementById("kt-progress").textContent = data.progress;
+
+        document.getElementById("kt-cell-moq").className = `kt-cell clickable ${data.moqClass}`;
+        document.getElementById("kt-cell-zero").className = `kt-cell clickable ${data.zeroClass}`;
+        document.getElementById("kt-cell-excl").className = `kt-cell clickable ${data.exclClass}`;
+
+        document.getElementById("rail-moq").className = `rail-chip ${data.moqClass}`;
+        document.getElementById("rail-moq").innerHTML = `<strong>${data.moq === "—" ? "?" : data.moq.replace(" OK", "")}</strong>MOQ`;
+        document.getElementById("rail-zero").className = `rail-chip ${data.zeroClass}`;
+        document.getElementById("rail-zero").innerHTML = `<strong>${data.zero.includes("OK") ? "0" : "?"}</strong>ゼロ`;
+        document.getElementById("rail-excl").className = `rail-chip ${data.exclClass}`;
+        document.getElementById("rail-excl").innerHTML = `<strong>${data.excl === "未取得" ? "×" : "○"}</strong>独占`;
+      }
+
+      function setDetailCollapsed(collapsed) {
+        detailPane.classList.toggle("collapsed", collapsed);
+        paneRail.classList.toggle("hidden", !collapsed);
+      }
+
+      collapseDetail.addEventListener("click", () => setDetailCollapsed(true));
+      expandDetail.addEventListener("click", () => setDetailCollapsed(false));
+
+      const detailTemplates = {
+        MOQ: {
+          title: "MOQ 詳細",
+          html: `
+            <div class="comment-item">
+              <div class="head"><strong>全体コメント</strong><span class="tag tag-amber">要確認</span></div>
+              <div class="comment-box">初回500個のMOQについてメーカーに確認中。1000個だと厳しい可能性あり。</div>
+            </div>
+            <div class="field"><label>ステータス</label><select><option>要確認</option><option>合意済み</option></select></div>
+            <div class="field"><label>確定値</label><input value="500" /></div>
+            <button class="btn btn-teal btn-sm">確定する</button>
+            <div class="comment-item" style="margin-top:12px">
+              <div class="head"><strong>トーク抜粋</strong><span class="tag tag-green">+NEW</span></div>
+              <div class="comment-box">MOQ 500pcs for first order?</div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin:12px 0 6px">推移メモ</p>
+            <div class="graph-placeholder">月次の交渉推移（将来実装）</div>
+          `,
+        },
+        独占権: {
+          title: "独占権 詳細",
+          html: `
+            <div class="comment-item">
+              <div class="head"><strong>全体コメント</strong><span class="tag tag-amber">要確認</span></div>
+              <div class="comment-box">日本市場での独占販売権について回答待ち。</div>
+            </div>
+            <div class="field"><label>ステータス</label><select><option>要確認</option></select></div>
+            <div class="field"><label>確定値</label><input placeholder="未設定" /></div>
+          `,
+        },
+      };
+
+      function showDetail(topic) {
+        const t = detailTemplates[topic];
+        if (t) {
+          detailTitle.textContent = t.title;
+          detailBody.innerHTML = t.html;
+        }
+        checklistBody.querySelectorAll("tr").forEach((tr) => {
+          tr.classList.toggle("selected", tr.dataset.topic === topic);
+        });
+      }
+
+      function setView(view) {
+        const analyzed = view === "analyzed";
+        tabs.forEach((t) => t.classList.toggle("active", t.dataset.view === view));
+        analyzedStatus.classList.toggle("hidden", !analyzed);
+        actionCard.classList.toggle("hidden", !analyzed);
+        replyCard.classList.toggle("hidden", !analyzed);
+        checklistBody.querySelectorAll("tr").forEach((tr) => {
+          if (tr.dataset.topic) tr.classList.toggle("hit", analyzed);
+        });
+        applySummary(analyzed ? summaryAnalyzed : summaryInitial);
+        if (analyzed) {
+          showDetail("MOQ");
+          setDetailCollapsed(false);
+        } else {
+          detailTitle.textContent = "項目詳細";
+          detailBody.innerHTML =
+            '<p style="color:var(--muted);font-size:12px;margin:0">中央の表の行をクリックすると、ここに詳細が表示されます。</p>';
+          checklistBody.querySelectorAll("tr").forEach((tr) => tr.classList.remove("selected"));
+          setDetailCollapsed(true);
+        }
+      }
+
+      document.querySelectorAll(".kt-cell.clickable, .rail-chip[data-topic]").forEach((el) => {
+        el.addEventListener("click", () => {
+          const topic = el.dataset.topic;
+          if (topic) {
+            showDetail(topic);
+            setDetailCollapsed(false);
+            setView("analyzed");
+          }
+        });
+      });
+
+      tabs.forEach((tab) => tab.addEventListener("click", () => setView(tab.dataset.view)));
+
+      checklistBody.querySelectorAll("tr[data-topic]").forEach((tr) => {
+        tr.addEventListener("click", () => {
+          showDetail(tr.dataset.topic);
+          setView("analyzed");
+        });
+      });
+
+      setView("initial");
+    </script>
+  </body>
+</html>

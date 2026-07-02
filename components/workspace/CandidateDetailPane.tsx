@@ -235,30 +235,6 @@ function TopicDetail({
         </>
       )}
 
-      {deal.changeLog.length > 0 && (
-        <>
-          <Separator />
-          <Pane4Section id={PANE4_SECTION_IDS.changelog} title="変更履歴">
-            <ul className="flex flex-col gap-2 text-xs">
-              {deal.changeLog.map((entry) => (
-                <li
-                  key={entry.id}
-                  className="rounded-lg border border-border bg-card px-3 py-2"
-                >
-                  <p className="font-medium text-foreground">
-                    {TERM_FIELD_LABELS[entry.field as keyof typeof TERM_FIELD_LABELS] ??
-                      entry.field}
-                  </p>
-                  <p className="text-muted-foreground">
-                    {entry.fromValue} → {entry.toValue}
-                  </p>
-                  <p className="text-muted-foreground">{entry.updatedAt}</p>
-                </li>
-              ))}
-            </ul>
-          </Pane4Section>
-        </>
-      )}
     </div>
   );
 }
@@ -319,9 +295,9 @@ export function CandidateDetailPane({
   return (
     <aside
       className={cn(
-        "flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-background",
+        "flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-card",
         "transition-[width] duration-200 ease-linear",
-        pane4Open ? "w-[400px]" : "w-12",
+        pane4Open ? "w-[min(360px,32vw)]" : "w-12",
       )}
     >
       {pane4Open ? (

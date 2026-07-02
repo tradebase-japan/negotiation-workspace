@@ -81,11 +81,13 @@ export function ReplyAssistCard({
   manufacturer,
   focusRequest,
   onFocusRequestConsumed,
+  embedded = false,
 }: {
   deal: Deal;
   manufacturer: Manufacturer;
   focusRequest?: ReplyDraftFocus | null;
   onFocusRequestConsumed?: () => void;
+  embedded?: boolean;
 }) {
   const [userIntent, setUserIntent] = useState("");
   const [focusTopic, setFocusTopic] = useState<ReplyDraftFocus>("general");
@@ -128,16 +130,8 @@ export function ReplyAssistCard({
     }
   };
 
-  return (
-    <Card id="pane3-reply-assist">
-      <CardHeader>
-        <CardTitle emphasis="prominent">
-          {PANE3_SECTION.replyAssist}
-        </CardTitle>
-        <CardDescription>{PANE3_SECTION.replyAssistDescription}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-3">
+  const inner = (
+    <div className="flex flex-col gap-3">
           <Textarea
             value={userIntent}
             onChange={(e) => setUserIntent(e.target.value)}
@@ -264,7 +258,25 @@ export function ReplyAssistCard({
             </div>
           )}
         </div>
-      </CardContent>
+  );
+
+  if (embedded) {
+    return (
+      <div id="pane3-reply-assist" className="rounded-lg border border-border bg-card p-3 shadow-sm">
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Card id="pane3-reply-assist">
+      <CardHeader>
+        <CardTitle emphasis="prominent">
+          {PANE3_SECTION.replyAssist}
+        </CardTitle>
+        <CardDescription>{PANE3_SECTION.replyAssistDescription}</CardDescription>
+      </CardHeader>
+      <CardContent>{inner}</CardContent>
     </Card>
   );
 }

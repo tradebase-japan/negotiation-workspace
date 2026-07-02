@@ -9,7 +9,9 @@ import {
   type ChatAnalysisResult,
   type ChatSuggestion,
 } from "@/lib/chat-analyzer";
+import { type NextActionItem } from "@/lib/next-actions";
 import { PANE3_SECTION } from "@/lib/labels";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +23,7 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { type ReplyDraftFocus } from "@/lib/reply-assist";
 
 type PasteResult = ChatAnalysisResult & { entryId: string | null };
 
@@ -31,6 +34,10 @@ export function ChatInboxCard({
   onApplyAll,
   externalAnalysis,
   onConsumeExternalAnalysis,
+  pendingActions = [],
+  highlightTopicKeys,
+  onOpenAction,
+  onRequestReplyFocus,
 }: {
   inbox: ChatInboxEntry[];
   onPaste: (content: string) => PasteResult;
@@ -38,11 +45,16 @@ export function ChatInboxCard({
   onApplyAll: (suggestions: ChatSuggestion[], inboxEntryId: string) => void;
   externalAnalysis?: PasteResult | null;
   onConsumeExternalAnalysis?: () => void;
+  pendingActions?: NextActionItem[];
+  highlightTopicKeys?: Set<string>;
+  onOpenAction?: (scope: "manufacturer" | "deal", topicId: string) => void;
+  onRequestReplyFocus?: (focus: ReplyDraftFocus) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [lastResult, setLastResult] = useState<ChatAnalysisResult | null>(null);
   const [lastEntryId, setLastEntryId] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     if (!externalAnalysis) return;
@@ -69,9 +81,12 @@ export function ChatInboxCard({
     setLastEntryId(null);
   };
 
+  const showPending =
+    pendingActions.length > 0 || (lastResult && lastResult.suggestions.length > 0);
+
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-border/80 shadow-sm">
+      <CardHeader className="pb-2">
         <CardTitle emphasis="prominent">{PANE3_SECTION.chatInbox}</CardTitle>
         <CardDescription>{PANE3_SECTION.chatInboxDescription}</CardDescription>
       </CardHeader>
@@ -82,11 +97,12 @@ export function ChatInboxCard({
             onChange={(e) => setDraft(e.target.value)}
             placeholder="メール・WeChat・LINEのやり取りをここに貼り付け…"
             rows={5}
-            className="min-h-[120px] resize-y bg-card text-sm"
+            className="min-h-[100px] resize-y bg-card text-sm"
           />
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
+              className="bg-[#1a4547] hover:bg-[#245558]"
               onClick={handleAnalyze}
               disabled={!draft.trim() || analyzing}
             >
@@ -103,12 +119,12 @@ export function ChatInboxCard({
               onClick={previewAnalyze}
               disabled={!draft.trim()}
             >
-              解析プレビュー（保存しない）
+              解析プレビュー
             </Button>
           </div>
 
           {lastResult && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-3">
               <p className="mb-2 text-sm text-foreground">{lastResult.overview}</p>
               {lastResult.suggestions.length > 0 && lastEntryId && (
                 <Button
@@ -122,39 +138,116 @@ export function ChatInboxCard({
                   すべて要確認として反映
                 </Button>
               )}
-              <ul className="mt-3 flex flex-col gap-2">
-                {lastResult.suggestions.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-sm"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="font-medium">{s.summary}</span>
-                      <Badge variant="secondary" size="xs">
-                        要確認
-                      </Badge>
-                    </div>
-                    {s.memo && (
-                      <p className="text-xs text-muted-foreground">{s.memo}</p>
-                    )}
-                    {s.excerpt && (
-                      <p className="rounded border border-border bg-muted/30 px-2 py-1.5 text-xs leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                        {s.excerpt}
-                      </p>
-                    )}
-                    {lastEntryId && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="xs"
-                        className="self-start"
-                        onClick={() => onApplySuggestion(s, lastEntryId)}
-                      >
-                        この内容を反映
-                      </Button>
-                    )}
-                  </li>
-                ))}
+            </div>
+          )}
+
+          {showPending && (
+            <div className="rounded-lg border border-border bg-card">
+              <div className="border-b border-border px-3 py-2">
+                <p className="text-xs font-semibold text-foreground">
+                  拾った未決事項
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  反映または返信案へ
+                </p>
+              </div>
+              <ul className="divide-y divide-border">
+                {(lastResult?.suggestions.length
+                  ? lastResult.suggestions.map((s) => ({
+                      id: s.id,
+                      label: s.summary,
+                      statusLabel: "要確認",
+                      scope: s.scope,
+                      topicId: s.topicId,
+                      replyFocus: undefined as ReplyDraftFocus | undefined,
+                      fromAnalysis: true,
+                      suggestion: s,
+                    }))
+                  : pendingActions.map((a) => ({
+                      id: a.id,
+                      label: a.label,
+                      statusLabel: a.statusLabel,
+                      scope: a.scope,
+                      topicId: a.topicId,
+                      replyFocus: a.replyFocus,
+                      fromAnalysis: false,
+                      suggestion: null as ChatSuggestion | null,
+                    }))
+                ).map((item) => {
+                  const key =
+                    item.scope && item.topicId
+                      ? `${item.scope}:${item.topicId}`
+                      : item.id;
+                  const highlighted = highlightTopicKeys?.has(key);
+
+                  return (
+                    <li
+                      key={item.id}
+                      className={cn(
+                        "flex flex-wrap items-center gap-2 px-3 py-2.5 text-sm",
+                        highlighted && "border-l-2 border-l-[#1a4547] bg-teal-50/40",
+                      )}
+                    >
+                      <span className="min-w-0 flex-1 font-medium">
+                        {item.label}
+                      </span>
+                      {item.statusLabel && (
+                        <Badge variant="secondary" size="xs">
+                          {item.statusLabel}
+                        </Badge>
+                      )}
+                      {item.fromAnalysis &&
+                        item.suggestion &&
+                        lastEntryId && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="xs"
+                            onClick={() =>
+                              onApplySuggestion(item.suggestion!, lastEntryId)
+                            }
+                          >
+                            反映
+                          </Button>
+                        )}
+                      {item.scope && item.topicId && onOpenAction && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          onClick={() =>
+                            onOpenAction(item.scope!, item.topicId!)
+                          }
+                        >
+                          詳細
+                        </Button>
+                      )}
+                      {onRequestReplyFocus && (
+                        <Button
+                          type="button"
+                          size="xs"
+                          className="bg-[#1a4547] hover:bg-[#245558]"
+                          onClick={() => {
+                            if (item.replyFocus) {
+                              onRequestReplyFocus(item.replyFocus);
+                            } else if (
+                              item.scope === "deal" &&
+                              item.topicId
+                            ) {
+                              onRequestReplyFocus(
+                                item.topicId as ReplyDraftFocus,
+                              );
+                            } else {
+                              onRequestReplyFocus("general");
+                            }
+                          }}
+                        >
+                          返信案
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -162,11 +255,15 @@ export function ChatInboxCard({
           {inbox.length > 0 && (
             <>
               <Separator />
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  貼り付け履歴（{inbox.length}件）
-                </p>
-                <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((v) => !v)}
+                className="text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+              >
+                貼り付け履歴（{inbox.length}件）{historyOpen ? " ▲" : " ▼"}
+              </button>
+              {historyOpen && (
+                <ul className="flex flex-col gap-2">
                   {[...inbox].reverse().map((entry) => (
                     <li
                       key={entry.id}
@@ -181,7 +278,7 @@ export function ChatInboxCard({
                     </li>
                   ))}
                 </ul>
-              </div>
+              )}
             </>
           )}
         </div>

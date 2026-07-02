@@ -219,3 +219,14 @@
     @apply font-sans;
   }
 }
+
+.negotiation-console {
+  --sidebar: #1a4547;
+  --sidebar-foreground: #e8f2f2;
+  --sidebar-primary: #2f6b6e;
+  --sidebar-primary-foreground: #f5fafa;
+  --sidebar-accent: #245558;
+  --sidebar-accent-foreground: #e8f2f2;
+  --sidebar-border: #2f5c5e;
+  --sidebar-ring: #5eead4;
+}

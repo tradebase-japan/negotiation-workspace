@@ -63,10 +63,15 @@ export function PositionPane({
         className="border-r border-sidebar-border [&_[data-slot=sidebar-container]]:bg-sidebar"
       >
         <SidebarHeader className="border-b border-sidebar-border p-0">
-          <div className="flex h-12 items-center justify-between gap-2 px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[state=expanded]:px-5">
-            <h2 className="truncate text-sm font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-              {workspaceName}
-            </h2>
+          <div className="flex h-12 items-center justify-between gap-2 px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[state=expanded]:px-4">
+            <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+              <h2 className="truncate text-sm font-semibold text-sidebar-foreground">
+                {workspaceName}
+              </h2>
+              <p className="text-[9px] tracking-widest text-sidebar-foreground/60 uppercase">
+                Negotiation Console
+              </p>
+            </div>
             <Pane1Toggle />
           </div>
         </SidebarHeader>
