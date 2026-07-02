@@ -30,4 +30,14 @@ I wanted to follow up regarding the chair I tried at your COMPUTEX booth.`;
 
     expect(needsJapaneseTranslation(text)).toBe(true);
   });
+
+  it("detects mixed Alf chat with Japanese timestamps", () => {
+    const text = `15:56 Alf 元楽天Q0506 Hi! TTRacing の Alfです
+16:00 ひろき HIROKIです！
+10:09 Alf Sorry, the picture is not great
+10:13 Alf Basically all the variants are more or less equally popular
+10:17 Alf the retail price in Singapore is $549`;
+
+    expect(needsJapaneseTranslation(text)).toBe(true);
+  });
 });

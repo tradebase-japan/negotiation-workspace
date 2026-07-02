@@ -34,6 +34,7 @@ export function InlineTextareaField({
 }: InlineTextareaFieldProps) {
   return (
     <Textarea
+      key={value}
       defaultValue={value}
       placeholder={placeholder ?? "未設定"}
       aria-label={ariaLabel}

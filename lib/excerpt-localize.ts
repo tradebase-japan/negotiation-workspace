@@ -19,9 +19,14 @@ export function needsJapaneseTranslation(text: string): boolean {
   if (!trimmed) return false;
   if (isMostlyEnglish(trimmed)) return true;
 
-  const hasEnglishBlock = /[A-Za-z]{24,}/.test(trimmed);
+  const latin = (trimmed.match(/[A-Za-z]/g) ?? []).length;
+  const cjk = (trimmed.match(/[\u3040-\u9fff]/g) ?? []).length;
+
+  if (latin >= 40 && latin >= cjk) return true;
+
+  const hasEnglishBlock = /[A-Za-z]{20,}/.test(trimmed);
   const hasEnglishWords =
-    /\b(the|and|you|your|please|would|could|hello|hi|hope|share|chair|product)\b/i.test(
+    /\b(the|and|you|your|please|would|could|hello|hi|hope|share|sorry|price|retail|variant)\b/i.test(
       trimmed,
     );
 
