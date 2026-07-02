@@ -676,7 +676,7 @@ export function Workspace({
           persistenceStatus={persistenceStatus}
           persistenceError={persistenceError}
         />
-        <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="flex h-full min-h-0 flex-1 overflow-hidden">
           {activeDeal ? (
             <>
               <CandidateDashboardPane

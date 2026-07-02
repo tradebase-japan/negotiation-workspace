@@ -197,53 +197,55 @@ export function NextActionsCard({
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-3">
-          {totalCount === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              未決の交渉項目はありません。下から手動タスクを追加できます。
-            </p>
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {visible.map((item) => (
-                <li key={item.id}>
-                  <ActionRow
-                    item={item}
-                    selected={isSelected(item)}
-                    onOpen={() => openAction(item)}
-                    onReply={() => onRequestReplyFocus(item.replyFocus)}
-                    onCompletePin={
-                      item.kind === "pin"
-                        ? () => completePin(item.id)
-                        : undefined
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="max-h-[min(20rem,calc(100svh-18rem))] overflow-y-auto overscroll-y-contain pr-1 sm:max-h-[min(24rem,calc(100svh-16rem))]">
+            {totalCount === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                未決の交渉項目はありません。下から手動タスクを追加できます。
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {visible.map((item) => (
+                  <li key={item.id}>
+                    <ActionRow
+                      item={item}
+                      selected={isSelected(item)}
+                      onOpen={() => openAction(item)}
+                      onReply={() => onRequestReplyFocus(item.replyFocus)}
+                      onCompletePin={
+                        item.kind === "pin"
+                          ? () => completePin(item.id)
+                          : undefined
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          {hiddenCount > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="self-start"
-              onClick={() => setShowAll(true)}
-            >
-              あと {hiddenCount} 件を表示
-            </Button>
-          )}
+            {hiddenCount > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-2 self-start"
+                onClick={() => setShowAll(true)}
+              >
+                あと {hiddenCount} 件を表示
+              </Button>
+            )}
 
-          {showAll && totalCount > DEFAULT_VISIBLE_ACTIONS && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="self-start"
-              onClick={() => setShowAll(false)}
-            >
-              折りたたむ
-            </Button>
-          )}
+            {showAll && totalCount > DEFAULT_VISIBLE_ACTIONS && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-2 self-start"
+                onClick={() => setShowAll(false)}
+              >
+                折りたたむ
+              </Button>
+            )}
+          </div>
 
           <Separator />
 
