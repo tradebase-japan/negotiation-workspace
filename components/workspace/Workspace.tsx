@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useMemo } from "react";
 
+import { useWorkspacePersistence } from "@/hooks/use-workspace-persistence";
+import type { WorkspaceStatePayload } from "@/lib/workspace-state";
+
 import {
   type Region,
   type Manufacturer,
@@ -52,6 +55,32 @@ export function Workspace({
   const [externalInboxAnalysis, setExternalInboxAnalysis] = useState<
     (ChatAnalysisResult & { entryId: string }) | null
   >(null);
+
+  const hydrateFromDatabase = useCallback((payload: WorkspaceStatePayload) => {
+    setRegions(payload.regions);
+    setManufacturers(payload.manufacturers);
+    setDeals(payload.deals);
+    setSelectedManufacturerId(payload.selectedManufacturerId);
+    setSelectedDealId(payload.selectedDealId);
+    setSelectedDetail(null);
+    setPane4ManuallyClosed(false);
+    setExternalInboxAnalysis(null);
+  }, []);
+
+  const { status: persistenceStatus, errorMessage: persistenceError } =
+    useWorkspacePersistence({
+      initialRegions,
+      initialManufacturers,
+      initialDeals,
+      initialSelectedManufacturerId: "m-xfanic",
+      initialSelectedDealId: "deal-xfanic-5019d",
+      regions,
+      manufacturers,
+      deals,
+      selectedManufacturerId,
+      selectedDealId,
+      onHydrate: hydrateFromDatabase,
+    });
 
   const pane4Open = selectedDetail !== null && !pane4ManuallyClosed;
 
@@ -644,6 +673,8 @@ export function Workspace({
           departments={regionsWithCounts}
           onAddDepartment={addRegion}
           onDeleteDepartment={deleteRegion}
+          persistenceStatus={persistenceStatus}
+          persistenceError={persistenceError}
         />
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {activeDeal ? (

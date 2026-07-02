@@ -31,7 +31,20 @@ type GlobalHeaderProps = {
   departments: Region[];
   onAddDepartment: (name: string) => void;
   onDeleteDepartment: (deptId: string) => void;
+  persistenceStatus?: "idle" | "loading" | "ready" | "saving" | "error";
+  persistenceError?: string | null;
 };
+
+function persistenceLabel(
+  status: GlobalHeaderProps["persistenceStatus"],
+  error?: string | null,
+): string | null {
+  if (status === "loading") return "読み込み中…";
+  if (status === "saving") return "保存中…";
+  if (status === "ready") return "保存済み";
+  if (status === "error") return error ?? "保存エラー";
+  return null;
+}
 
 export function GlobalHeader({
   departmentTitle,
@@ -43,7 +56,13 @@ export function GlobalHeader({
   departments,
   onAddDepartment,
   onDeleteDepartment,
+  persistenceStatus,
+  persistenceError,
 }: GlobalHeaderProps) {
+  const persistenceText = persistenceLabel(
+    persistenceStatus,
+    persistenceError,
+  );
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
       <Breadcrumb
@@ -73,6 +92,19 @@ export function GlobalHeader({
         onSelectDeal={onSelectDeal}
         onAddDeal={onAddDeal}
       />
+
+      {persistenceText ? (
+        <p
+          className={
+            persistenceStatus === "error"
+              ? "hidden shrink-0 text-[11px] text-destructive md:block"
+              : "hidden shrink-0 text-[11px] text-muted-foreground md:block"
+          }
+          aria-live="polite"
+        >
+          {persistenceText}
+        </p>
+      ) : null}
 
       <Dialog>
         <Tooltip>
