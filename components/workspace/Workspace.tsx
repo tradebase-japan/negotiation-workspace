@@ -24,6 +24,7 @@ import { getAttachmentTextContent } from "@/lib/attachment-text";
 import { looksLikeChatHistory } from "@/lib/pdf-extract";
 import { filesToAttachments } from "@/components/workspace/DealAttachmentsCard";
 import { resolveSuggestionExcerpt } from "@/lib/chat-excerpt";
+import { localizeExcerptForDisplay } from "@/lib/excerpt-localize";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { GlobalHeader } from "@/components/workspace/GlobalHeader";
 import { PositionPane } from "@/components/workspace/PositionPane";
@@ -319,16 +320,18 @@ export function Workspace({
   );
 
   const applySuggestion = useCallback(
-    (suggestion: ChatSuggestion, inboxEntryId: string) => {
+    async (suggestion: ChatSuggestion, inboxEntryId: string) => {
       const deal = deals.find((d) => d.id === selectedDealId);
       const fullContent =
         deal?.chatInbox.find((e) => e.id === inboxEntryId)?.content ?? "";
-      const excerpt = resolveSuggestionExcerpt(
+      const rawExcerpt = resolveSuggestionExcerpt(
         fullContent,
         suggestion.scope,
         suggestion.topicId,
         suggestion.excerpt,
       );
+      const chatExcerpt = await localizeExcerptForDisplay(rawExcerpt);
+      const today = new Date().toISOString().slice(0, 10);
 
       if (suggestion.scope === "manufacturer" && activeManufacturer) {
         setManufacturers((prev) =>
@@ -348,8 +351,8 @@ export function Workspace({
                   ...current,
                   status: suggestion.status ?? current.status,
                   memo: suggestion.memo ?? current.memo,
-                  chatExcerpt: suggestion.excerpt ?? excerpt,
-                  updatedAt: new Date().toISOString().slice(0, 10),
+                  chatExcerpt,
+                  updatedAt: today,
                 },
               },
             };
@@ -383,8 +386,8 @@ export function Workspace({
                   ...current,
                   status: suggestion.status ?? current.status,
                   memo: suggestion.memo ?? current.memo,
-                  chatExcerpt: suggestion.excerpt ?? excerpt,
-                  updatedAt: new Date().toISOString().slice(0, 10),
+                  chatExcerpt,
+                  updatedAt: today,
                 },
               },
               terms: nextTerms,
@@ -397,7 +400,7 @@ export function Workspace({
   );
 
   const applyAllSuggestions = useCallback(
-    (suggestions: ChatSuggestion[], inboxEntryId: string) => {
+    async (suggestions: ChatSuggestion[], inboxEntryId: string) => {
       const deal = deals.find((d) => d.id === selectedDealId);
       const fullContent =
         deal?.chatInbox.find((e) => e.id === inboxEntryId)?.content ?? "";
@@ -405,34 +408,41 @@ export function Workspace({
 
       const mfrSuggestions = suggestions.filter((s) => s.scope === "manufacturer");
       if (mfrSuggestions.length > 0 && activeManufacturer) {
+        const localized = await Promise.all(
+          mfrSuggestions.map((s) =>
+            localizeExcerptForDisplay(
+              resolveSuggestionExcerpt(
+                fullContent,
+                s.scope,
+                s.topicId,
+                s.excerpt,
+              ),
+            ),
+          ),
+        );
+
         setManufacturers((prev) =>
           prev.map((m) => {
             if (m.id !== activeManufacturer.id) return m;
             let topics = { ...m.topics };
-            for (const s of mfrSuggestions) {
+            mfrSuggestions.forEach((s, index) => {
               const current = topics[s.topicId] ?? {
                 status: "not_started",
                 memo: "",
                 chatExcerpt: "",
                 updatedAt: "",
               };
-              const excerpt = resolveSuggestionExcerpt(
-                fullContent,
-                s.scope,
-                s.topicId,
-                s.excerpt,
-              );
               topics = {
                 ...topics,
                 [s.topicId]: {
                   ...current,
                   status: s.status ?? current.status,
                   memo: s.memo ?? current.memo,
-                  chatExcerpt: excerpt,
+                  chatExcerpt: localized[index],
                   updatedAt: today,
                 },
               };
-            }
+            });
             return { ...m, topics };
           }),
         );
@@ -440,31 +450,38 @@ export function Workspace({
 
       const dealSuggestions = suggestions.filter((s) => s.scope === "deal");
       if (dealSuggestions.length > 0) {
+        const localized = await Promise.all(
+          dealSuggestions.map((s) =>
+            localizeExcerptForDisplay(
+              resolveSuggestionExcerpt(
+                fullContent,
+                s.scope,
+                s.topicId,
+                s.excerpt,
+              ),
+            ),
+          ),
+        );
+
         setDeals((prev) =>
           prev.map((d) => {
             if (d.id !== selectedDealId) return d;
             let topics = { ...d.topics };
             let terms = { ...d.terms };
-            for (const s of dealSuggestions) {
+            dealSuggestions.forEach((s, index) => {
               const current = topics[s.topicId] ?? {
                 status: "not_started",
                 memo: "",
                 chatExcerpt: "",
                 updatedAt: "",
               };
-              const excerpt = resolveSuggestionExcerpt(
-                fullContent,
-                s.scope,
-                s.topicId,
-                s.excerpt,
-              );
               topics = {
                 ...topics,
                 [s.topicId]: {
                   ...current,
                   status: s.status ?? current.status,
                   memo: s.memo ?? current.memo,
-                  chatExcerpt: excerpt,
+                  chatExcerpt: localized[index],
                   updatedAt: today,
                 },
               };
@@ -478,7 +495,7 @@ export function Workspace({
                   },
                 };
               }
-            }
+            });
             return { ...d, topics, terms };
           }),
         );

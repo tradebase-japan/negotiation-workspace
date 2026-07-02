@@ -41,8 +41,14 @@ export function ChatInboxCard({
 }: {
   inbox: ChatInboxEntry[];
   onPaste: (content: string) => PasteResult;
-  onApplySuggestion: (suggestion: ChatSuggestion, inboxEntryId: string) => void;
-  onApplyAll: (suggestions: ChatSuggestion[], inboxEntryId: string) => void;
+  onApplySuggestion: (
+    suggestion: ChatSuggestion,
+    inboxEntryId: string,
+  ) => void | Promise<void>;
+  onApplyAll: (
+    suggestions: ChatSuggestion[],
+    inboxEntryId: string,
+  ) => void | Promise<void>;
   externalAnalysis?: PasteResult | null;
   onConsumeExternalAnalysis?: () => void;
   pendingActions?: NextActionItem[];
@@ -55,6 +61,7 @@ export function ChatInboxCard({
   const [lastResult, setLastResult] = useState<ChatAnalysisResult | null>(null);
   const [lastEntryId, setLastEntryId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
 
   useEffect(() => {
     if (!externalAnalysis) return;
@@ -131,11 +138,15 @@ export function ChatInboxCard({
                   type="button"
                   variant="secondary"
                   size="sm"
-                  onClick={() =>
-                    onApplyAll(lastResult.suggestions, lastEntryId)
-                  }
+                  disabled={applying}
+                  onClick={() => {
+                    setApplying(true);
+                    void Promise.resolve(
+                      onApplyAll(lastResult.suggestions, lastEntryId),
+                    ).finally(() => setApplying(false));
+                  }}
                 >
-                  すべて要確認として反映
+                  {applying ? "反映中…" : "すべて要確認として反映"}
                 </Button>
               )}
             </div>
@@ -199,16 +210,20 @@ export function ChatInboxCard({
                       {item.fromAnalysis &&
                         item.suggestion &&
                         lastEntryId && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="xs"
-                            onClick={() =>
-                              onApplySuggestion(item.suggestion!, lastEntryId)
-                            }
-                          >
-                            反映
-                          </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="xs"
+                          disabled={applying}
+                          onClick={() => {
+                            setApplying(true);
+                            void Promise.resolve(
+                              onApplySuggestion(item.suggestion!, lastEntryId),
+                            ).finally(() => setApplying(false));
+                          }}
+                        >
+                          反映
+                        </Button>
                         )}
                       {item.scope && item.topicId && onOpenAction && (
                         <Button

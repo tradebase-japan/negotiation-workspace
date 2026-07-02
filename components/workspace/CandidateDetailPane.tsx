@@ -185,11 +185,11 @@ function TopicDetail({
               ariaLabel="メモ"
             />
           </InlineFieldRow>
-          <InlineFieldRow label="トーク抜粋">
+          <InlineFieldRow label="トーク抜粋（日本語）">
             <InlineTextareaField
               value={progress?.chatExcerpt ?? ""}
               onSave={updateChat}
-              ariaLabel="トーク抜粋"
+              ariaLabel="トーク抜粋（日本語）"
             />
           </InlineFieldRow>
         </div>

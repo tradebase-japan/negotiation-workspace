@@ -47,11 +47,11 @@ export function WorkbenchPane({
   onApplySuggestion: (
     suggestion: ChatSuggestion,
     inboxEntryId: string,
-  ) => void;
+  ) => void | Promise<void>;
   onApplyAllSuggestions: (
     suggestions: ChatSuggestion[],
     inboxEntryId: string,
-  ) => void;
+  ) => void | Promise<void>;
   onAddAttachments: (files: FileList) => Promise<void>;
   onAnalyzeAttachment: (attachmentId: string) => void;
   externalInboxAnalysis?: (ChatAnalysisResult & { entryId: string }) | null;
