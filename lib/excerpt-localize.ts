@@ -10,12 +10,36 @@ export function isMostlyEnglish(text: string): boolean {
   const cjk = (stripped.match(/[\u3040-\u9fff]/g) ?? []).length;
 
   if (cjk > latin) return false;
-  return latin / stripped.length >= 0.35;
+  return latin / stripped.length >= 0.25;
 }
 
-export async function localizeExcerptForDisplay(excerpt: string): Promise<string> {
+/** WeChat/LINE ログのように日時行＋英語本文が混ざる場合も拾う */
+export function needsJapaneseTranslation(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  if (isMostlyEnglish(trimmed)) return true;
+
+  const hasEnglishBlock = /[A-Za-z]{24,}/.test(trimmed);
+  const hasEnglishWords =
+    /\b(the|and|you|your|please|would|could|hello|hi|hope|share|chair|product)\b/i.test(
+      trimmed,
+    );
+
+  return hasEnglishBlock && hasEnglishWords;
+}
+
+export type LocalizeExcerptResult = {
+  text: string;
+  error?: string;
+};
+
+export async function localizeExcerptWithStatus(
+  excerpt: string,
+): Promise<LocalizeExcerptResult> {
   const trimmed = excerpt.trim();
-  if (!trimmed || !isMostlyEnglish(trimmed)) return trimmed;
+  if (!trimmed || !needsJapaneseTranslation(trimmed)) {
+    return { text: trimmed };
+  }
 
   try {
     const response = await fetch("/api/translate-excerpt", {
@@ -24,13 +48,27 @@ export async function localizeExcerptForDisplay(excerpt: string): Promise<string
       body: JSON.stringify({ text: trimmed }),
     });
 
-    if (!response.ok) return trimmed;
+    const json = (await response.json().catch(() => ({}))) as {
+      translated?: string;
+      error?: string;
+    };
 
-    const json = (await response.json()) as { translated?: string };
-    return json.translated?.trim() || trimmed;
+    if (!response.ok) {
+      return {
+        text: trimmed,
+        error: json.error ?? "翻訳に失敗しました",
+      };
+    }
+
+    return { text: json.translated?.trim() || trimmed };
   } catch {
-    return trimmed;
+    return { text: trimmed, error: "翻訳に失敗しました" };
   }
+}
+
+export async function localizeExcerptForDisplay(excerpt: string): Promise<string> {
+  const result = await localizeExcerptWithStatus(excerpt);
+  return result.text;
 }
 
 export async function localizeExcerptsForDisplay(

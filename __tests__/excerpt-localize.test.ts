@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isMostlyEnglish } from "@/lib/excerpt-localize";
+import { isMostlyEnglish, needsJapaneseTranslation } from "@/lib/excerpt-localize";
 
 describe("isMostlyEnglish", () => {
   it("detects English negotiation excerpt", () => {
@@ -19,5 +19,15 @@ describe("isMostlyEnglish", () => {
 
   it("skips very short strings", () => {
     expect(isMostlyEnglish("OK")).toBe(false);
+  });
+});
+
+describe("needsJapaneseTranslation", () => {
+  it("detects English body inside WeChat-style log", () => {
+    const text = `14:57 ひろき Hi Alf,
+I hope you're doing well.
+I wanted to follow up regarding the chair I tried at your COMPUTEX booth.`;
+
+    expect(needsJapaneseTranslation(text)).toBe(true);
   });
 });

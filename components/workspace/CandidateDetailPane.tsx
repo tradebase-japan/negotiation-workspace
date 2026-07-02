@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Copy, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ import {
   InlineFieldRow,
 } from "@/components/primitives";
 import { Pane4Section } from "@/components/workspace/Pane4Section";
+import { ChatExcerptField } from "@/components/workspace/ChatExcerptField";
 
 function CopyTemplateButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -123,13 +124,23 @@ function TopicDetail({
     }
   };
 
-  const updateChat = (chatExcerpt: string) => {
-    if (scope === "manufacturer") {
-      onUpdateManufacturerTopic(manufacturer.id, topicId, { chatExcerpt });
-    } else {
-      onUpdateDealTopic(deal.id, topicId, { chatExcerpt });
-    }
-  };
+  const updateChat = useCallback(
+    (chatExcerpt: string) => {
+      if (scope === "manufacturer") {
+        onUpdateManufacturerTopic(manufacturer.id, topicId, { chatExcerpt });
+      } else {
+        onUpdateDealTopic(deal.id, topicId, { chatExcerpt });
+      }
+    },
+    [
+      scope,
+      manufacturer.id,
+      deal.id,
+      topicId,
+      onUpdateManufacturerTopic,
+      onUpdateDealTopic,
+    ],
+  );
 
   const linkedTermField =
     scope === "deal" && isDealTopic(topicId)
@@ -186,10 +197,9 @@ function TopicDetail({
             />
           </InlineFieldRow>
           <InlineFieldRow label="トーク抜粋（日本語）">
-            <InlineTextareaField
+            <ChatExcerptField
               value={progress?.chatExcerpt ?? ""}
               onSave={updateChat}
-              ariaLabel="トーク抜粋（日本語）"
             />
           </InlineFieldRow>
         </div>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { isMostlyEnglish } from "@/lib/excerpt-localize";
+import { needsJapaneseTranslation } from "@/lib/excerpt-localize";
 
 export const runtime = "nodejs";
 
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "リクエスト形式が不正です" }, { status: 400 });
   }
 
-  if (!isMostlyEnglish(body.text)) {
+  if (!needsJapaneseTranslation(body.text)) {
     return NextResponse.json({ translated: body.text.trim() });
   }
 
