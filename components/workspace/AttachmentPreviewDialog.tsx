@@ -65,6 +65,13 @@ export function AttachmentPreviewDialog({
               {item.previewText}
             </div>
           ) : null}
+          {item?.kind === "image" ? (
+            <img
+              src={item.dataUrl}
+              alt={item.name}
+              className="max-h-[60vh] w-full object-contain"
+            />
+          ) : null}
         </ScrollArea>
       </DialogContent>
     </Dialog>

@@ -1,24 +1,34 @@
 import { Workspace } from "@/components/workspace/Workspace";
 import positionsData from "@/data/positions.json";
-import candidatesData from "@/data/candidates.json";
+import manufacturersData from "@/data/manufacturers.json";
+import dealsData from "@/data/candidates.json";
 import workspaceData from "@/data/workspace.json";
 import {
   departmentsSchema,
+  manufacturersDataSchema,
   candidatesSchema,
   workspaceSchema,
 } from "@/lib/schema";
 
 export default function Page() {
   const deptResult = departmentsSchema.safeParse(positionsData);
-  const candResult = candidatesSchema.safeParse(candidatesData);
+  const mfrResult = manufacturersDataSchema.safeParse(manufacturersData);
+  const dealResult = candidatesSchema.safeParse(dealsData);
   const wsResult = workspaceSchema.safeParse(workspaceData);
 
-  if (!deptResult.success || !candResult.success || !wsResult.success) {
+  if (
+    !deptResult.success ||
+    !mfrResult.success ||
+    !dealResult.success ||
+    !wsResult.success
+  ) {
     const errors = [
       !deptResult.success &&
         `positions.json: ${deptResult.error.issues[0]?.message}`,
-      !candResult.success &&
-        `candidates.json: ${candResult.error.issues[0]?.message}`,
+      !mfrResult.success &&
+        `manufacturers.json: ${mfrResult.error.issues[0]?.message}`,
+      !dealResult.success &&
+        `candidates.json: ${dealResult.error.issues[0]?.message}`,
       !wsResult.success &&
         `workspace.json: ${wsResult.error.issues[0]?.message}`,
     ].filter(Boolean);
@@ -27,8 +37,9 @@ export default function Page() {
 
   return (
     <Workspace
-      initialDepartments={deptResult.data}
-      initialCandidates={candResult.data}
+      initialRegions={deptResult.data}
+      initialManufacturers={mfrResult.data}
+      initialDeals={dealResult.data}
       workspace={wsResult.data}
     />
   );

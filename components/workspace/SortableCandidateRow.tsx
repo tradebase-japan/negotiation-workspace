@@ -3,7 +3,7 @@
 import { type CSSProperties, type ReactNode } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, MoreHorizontal, Star } from "lucide-react";
+import { GripVertical, MoreHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { type CandidateRow, type StageKey } from "@/lib/schema";
@@ -101,7 +101,7 @@ export function SortableCandidateRow({
           <p className="truncate text-sm">{cand.name}</p>
         </div>
         <span className="transition-opacity group-focus-within/candidate:opacity-0 group-hover/candidate:opacity-0">
-          <ScoreBadge avg={cand.averageScore} selected={selected} />
+          <ProgressBadge label={cand.progressLabel} selected={selected} />
         </span>
       </button>
       <DropdownMenu>
@@ -131,36 +131,21 @@ export function SortableCandidateRow({
   );
 }
 
-function ScoreBadge({
-  avg,
+function ProgressBadge({
+  label,
   selected,
 }: {
-  avg: number | null;
+  label: string;
   selected: boolean;
 }) {
-  if (avg === null) {
-    return (
-      <span
-        className={cn(
-          "shrink-0 text-xs",
-          selected ? "text-accent-foreground/80" : "text-muted-foreground",
-        )}
-        aria-label="未評価"
-      >
-        —
-      </span>
-    );
-  }
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-0.5 text-xs tabular-nums",
-        selected ? "text-accent-foreground" : "text-foreground/80",
+        "shrink-0 text-xs",
+        selected ? "text-accent-foreground/80" : "text-muted-foreground",
       )}
-      aria-label={`平均スコア ${avg.toFixed(1)} / 5`}
     >
-      <Star aria-hidden className="size-3 fill-current" />
-      {avg.toFixed(1)}
+      {label}
     </span>
   );
 }

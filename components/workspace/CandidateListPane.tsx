@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Archive,
-  ArchiveRestore,
-  ChevronDown,
-  MoreHorizontal,
-  Plus,
-  Star,
-} from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, MoreHorizontal, Plus } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -70,6 +63,10 @@ type CandidateListPaneProps = {
   onArchiveCandidate: (id: string) => void;
   onRestoreCandidate: (id: string) => void;
   onMoveCandidate: (id: string, toStage: StageKey, toIndex: number) => void;
+  paneTitle?: string;
+  addDialogTitle?: string;
+  addFieldLabel?: string;
+  addPlaceholder?: string;
 };
 
 export function CandidateListPane({
@@ -80,6 +77,10 @@ export function CandidateListPane({
   onArchiveCandidate,
   onRestoreCandidate,
   onMoveCandidate,
+  paneTitle = "案件リスト",
+  addDialogTitle = "案件を追加",
+  addFieldLabel = "商品名",
+  addPlaceholder = "例: スマート加湿器 Pro",
 }: CandidateListPaneProps) {
   const [addDialogStage, setAddDialogStage] = useState<{
     stage: StageKey;
@@ -200,7 +201,7 @@ export function CandidateListPane({
     <section className="flex w-[280px] shrink-0 flex-col border-r border-border bg-background">
       <header className="flex h-12 shrink-0 items-center border-b border-border px-3">
         <h2 className="truncate text-sm font-semibold text-foreground">
-          フロントエンドエンジニア
+          {paneTitle}
         </h2>
       </header>
       <ScrollArea className="min-h-0 flex-1">
@@ -270,11 +271,11 @@ export function CandidateListPane({
           onOpenChange={(open) => {
             if (!open) setAddDialogStage(null);
           }}
-          title="候補者を追加"
-          description={`「${addDialogStage.label}」ステージに候補者を追加します`}
-          fieldLabel="氏名"
-          fieldId="candidate-name"
-          placeholder="例: 山田 太郎"
+          title={addDialogTitle}
+          description={`「${addDialogStage.label}」に案件を追加します`}
+          fieldLabel={addFieldLabel}
+          fieldId="deal-name"
+          placeholder={addPlaceholder}
           onAdd={(name) => onAddCandidate(addDialogStage.stage, name)}
         />
       )}
@@ -284,7 +285,7 @@ export function CandidateListPane({
         onOpenChange={(open) => {
           if (!open) setArchiveTarget(null);
         }}
-        title="候補者をアーカイブしますか？"
+        title="案件をアーカイブしますか？"
         itemName={archiveTarget?.name ?? ""}
         description={`「${archiveTarget?.name ?? ""}」をアーカイブします。後で「アーカイブ済み」から復元できます。`}
         actionLabel="アーカイブ"
@@ -491,7 +492,14 @@ function ArchivedRowItem({
           <p className="truncate text-sm">{cand.name}</p>
         </div>
         <span className="transition-opacity group-focus-within/candidate:opacity-0 group-hover/candidate:opacity-0">
-          <ScoreBadge avg={cand.averageScore} selected={selected} />
+          <span
+            className={cn(
+              "shrink-0 text-xs",
+              selected ? "text-accent-foreground/80" : "text-muted-foreground",
+            )}
+          >
+            {cand.progressLabel}
+          </span>
         </span>
       </button>
       <DropdownMenu>
@@ -523,39 +531,5 @@ function ArchivedRowItem({
         </DropdownMenuContent>
       </DropdownMenu>
     </li>
-  );
-}
-
-function ScoreBadge({
-  avg,
-  selected,
-}: {
-  avg: number | null;
-  selected: boolean;
-}) {
-  if (avg === null) {
-    return (
-      <span
-        className={cn(
-          "shrink-0 text-xs",
-          selected ? "text-accent-foreground/80" : "text-muted-foreground",
-        )}
-        aria-label="未評価"
-      >
-        —
-      </span>
-    );
-  }
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-0.5 text-xs tabular-nums",
-        selected ? "text-accent-foreground" : "text-foreground/80",
-      )}
-      aria-label={`平均スコア ${avg.toFixed(1)} / 5`}
-    >
-      <Star aria-hidden className="size-3 fill-current" />
-      {avg.toFixed(1)}
-    </span>
   );
 }

@@ -1,278 +1,307 @@
 "use client";
 
-/**
- * Pane 4: 選考ステージ詳細パネル（ADR-0015 §19 でモード 1 を廃止）。
- *
- * ステージ詳細のみ表示する。候補者詳細（旧モード 1）は Pane 3 のヘッダー帯
- * トグル内に移管済み。起動時は畳まれた 48px 帯で、Pane 3 のステージカード
- * クリックで自動展開する。
- *
- * 規律:
- *   - components/primitives/ の Inline* primitive を使う（shadcn 標準フォーム）
- *   - AttachmentList を再利用（添付セクション）
- *   - AxisScoreRow を CandidateDashboardPane から import
- *   - ステージ切替時の state リセットは `key` 再マウントで
- *
- * `SelectedDetail` 型は `lib/schema.ts` に集約（Phase 3A）。
- */
-
 import { useEffect, useState } from "react";
+import { Copy, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Pane4Toggle } from "@/components/workspace/Pane4Toggle";
-
 import {
-  type AxisKey,
-  type StageKey,
-  type Scorecard,
+  type Deal,
+  type Manufacturer,
   type SelectedDetail,
-  AXIS_ORDER,
+  type DealTerms,
 } from "@/lib/schema";
-import { EVALUATION_AXIS, PANE4_SECTION_IDS } from "@/lib/labels";
-import { createMinimalScorecard } from "@/lib/data/factories";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  getTopicLabel,
+  getStatusOptions,
+  TOPIC_TEMPLATES,
+  TOPIC_STATUS_LABELS,
+  isDealTopic,
+} from "@/lib/negotiation-topics";
+import {
+  CONFIRMATION_LABELS,
+  PANE4_SECTION_IDS,
+  TERM_FIELD_LABELS,
+} from "@/lib/labels";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
-  InlineDateField,
-  InlineSelectField,
-  InlineComboboxField,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   InlineTextareaField,
+  InlineTextField,
   InlineFieldRow,
-  type ComboOption,
 } from "@/components/primitives";
 import { Pane4Section } from "@/components/workspace/Pane4Section";
-import { AxisScoreRow } from "@/components/workspace/CandidateDashboardPane";
-import { AttachmentList } from "@/components/workspace/AttachmentList";
 
-// ===== Pane 4 内部型（ファイル外には出さない） =====
+function CopyTemplateButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
 
-/**
- * Pane 4 モード 2 で inline 編集できる Scorecard のキー集合。
- * `onUpdateScorecardField` の `field` 引数の型として親 (Workspace.tsx) と整合させる。
- *
- * 旧実装は `date / format / interviewer / decision` の 4 フィールドのみだったが、
- * ADR-0014 でコメント / 要約も `InlineTextareaField` で編集対象にしたため
- * `comment` / `summary` を追加した。Workspace.tsx 側の `EditableScorecardKey`
- * 再宣言も同形に揃える必要がある（型を export しない設計のため両側で宣言する規律）。
- */
-type EditableScorecardKey =
-  | "date"
-  | "format"
-  | "interviewer"
-  | "decision"
-  | "comment"
-  | "summary";
-
-// ===== 定数（screening-lab / profile-card-lab から移植） =====
-
-const FORMAT_OPTIONS = [
-  "書類",
-  "オンライン (Google Meet)",
-  "オフライン",
-] as const;
-
-const DECISION_OPTIONS = ["通過", "保留", "不合格"] as const;
-
-const INITIAL_INTERVIEWER_OPTIONS: ComboOption[] = [
-  { value: "田中 花子", description: "採用担当チーム" },
-  { value: "佐藤 太郎", description: "エンジニアリングマネージャー" },
-  { value: "鈴木 一郎", description: "シニアエンジニア" },
-  { value: "山田 美咲", description: "プロダクトマネージャー" },
-];
-
-// ===== 選考ステージ詳細（旧モード 2、ADR-0015 で唯一のモードに） =====
-
-/**
- * モード 2（選考ステージ詳細、書類選考 / 面接 共通テンプレート）。
- * 基本情報 / 評価 / コメント / 要約 / 添付 の 5 ブロック構成（screening-lab と一致）。
- *
- * ステージ別ラベル分岐（ADR-0010 §9 G）:
- *   - 「面接官」フィールド: 書類選考のみ「審査担当」、それ以外は「面接官」
- *   - 「要約」見出し: 書類選考のみ「書類の要約」、それ以外は「面接の要約」
- *   - 「添付」見出し: 書類選考のみ「提出書類」、それ以外は「添付」
- *
- * 各フィールドは `components/primitives/` の Inline* primitive で常時表示される
- * （Type-direct）。`interviewerOptions` は候補者+ステージ単位でメモリ保持し、
- * 親側 `key` でステージ・候補者切替時に自然リセット（Effect 内同期 setState 禁止）。
- */
-function Mode2StageDetail({
-  scorecard,
-  onUpdateAxis,
-  onUpdateScorecardField,
-}: {
-  scorecard: Scorecard;
-  onUpdateAxis: (stage: StageKey, axis: AxisKey, value: number | null) => void;
-  onUpdateScorecardField: (
-    stage: StageKey,
-    field: EditableScorecardKey,
-    value: string,
-  ) => void;
-}) {
-  const isScreening = scorecard.stage === "screening";
-  const interviewerLabel = isScreening ? "審査担当" : "面接官";
-  const summaryHeading = isScreening ? "書類の要約" : "面接の要約";
-  const attachmentHeading = isScreening ? "提出書類" : "添付";
-
-  const [interviewerOptions, setInterviewerOptions] = useState<ComboOption[]>(
-    INITIAL_INTERVIEWER_OPTIONS,
-  );
-
-  const handleAddInterviewer = (newOpt: ComboOption) =>
-    setInterviewerOptions((prev) =>
-      prev.find((o) => o.value === newOpt.value) ? prev : [...prev, newOpt],
-    );
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div>
-      {/* 基本情報（日時 / 形式 / 面接官 / 判定） */}
-      <Pane4Section id={PANE4_SECTION_IDS.m2.info} title="基本情報">
-        <dl className="flex flex-col gap-2.5 text-sm">
-          <InlineFieldRow label="日時">
-            <InlineDateField
-              value={scorecard.date}
-              onSave={(v) => onUpdateScorecardField(scorecard.stage, "date", v)}
-              ariaLabel="日時"
-            />
-          </InlineFieldRow>
+    <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+      {copied ? (
+        <>
+          <Check className="size-3.5" aria-hidden />
+          コピー済み
+        </>
+      ) : (
+        <>
+          <Copy className="size-3.5" aria-hidden />
+          テンプレをコピー
+        </>
+      )}
+    </Button>
+  );
+}
 
-          <InlineFieldRow label="形式">
-            <InlineSelectField
-              value={scorecard.format}
-              options={FORMAT_OPTIONS}
-              onSave={(v) =>
-                onUpdateScorecardField(scorecard.stage, "format", v)
-              }
-              ariaLabel="形式"
-            />
-          </InlineFieldRow>
+function TopicDetail({
+  deal,
+  manufacturer,
+  selectedDetail,
+  onUpdateDealTopic,
+  onUpdateManufacturerTopic,
+  onUpdateDealTerms,
+  onConfirmDealTerm,
+}: {
+  deal: Deal;
+  manufacturer: Manufacturer;
+  selectedDetail: Extract<SelectedDetail, { type: "topic" }>;
+  onUpdateDealTopic: (
+    dealId: string,
+    topicId: string,
+    patch: Partial<Deal["topics"][string]>,
+  ) => void;
+  onUpdateManufacturerTopic: (
+    manufacturerId: string,
+    topicId: string,
+    patch: Partial<Manufacturer["topics"][string]>,
+  ) => void;
+  onUpdateDealTerms: (
+    dealId: string,
+    field: keyof DealTerms,
+    value: string,
+  ) => void;
+  onConfirmDealTerm: (dealId: string, field: keyof DealTerms) => void;
+}) {
+  const { scope, topicId } = selectedDetail;
+  const progress =
+    scope === "manufacturer"
+      ? manufacturer.topics[topicId]
+      : deal.topics[topicId];
+  const status = progress?.status ?? "not_started";
+  const statusOptions = getStatusOptions(scope, topicId).map((s) => ({
+    value: s,
+    label: TOPIC_STATUS_LABELS[s] ?? s,
+  }));
+  const template = TOPIC_TEMPLATES[topicId as keyof typeof TOPIC_TEMPLATES] ?? "";
 
-          <InlineFieldRow label={interviewerLabel}>
-            <InlineComboboxField
-              value={scorecard.interviewer}
-              options={interviewerOptions}
-              onSave={(v) =>
-                onUpdateScorecardField(scorecard.stage, "interviewer", v)
-              }
-              onCreate={handleAddInterviewer}
-              ariaLabel={interviewerLabel}
-            />
-          </InlineFieldRow>
+  const updateStatus = (next: string) => {
+    if (scope === "manufacturer") {
+      onUpdateManufacturerTopic(manufacturer.id, topicId, { status: next });
+    } else {
+      onUpdateDealTopic(deal.id, topicId, { status: next });
+    }
+  };
 
-          <InlineFieldRow label="判定">
-            <InlineSelectField
-              value={scorecard.decision ?? ""}
-              options={DECISION_OPTIONS}
-              onSave={(v) =>
-                onUpdateScorecardField(scorecard.stage, "decision", v)
-              }
-              ariaLabel="判定"
-            />
-          </InlineFieldRow>
-        </dl>
+  const updateMemo = (memo: string) => {
+    if (scope === "manufacturer") {
+      onUpdateManufacturerTopic(manufacturer.id, topicId, { memo });
+    } else {
+      onUpdateDealTopic(deal.id, topicId, { memo });
+    }
+  };
+
+  const updateChat = (chatExcerpt: string) => {
+    if (scope === "manufacturer") {
+      onUpdateManufacturerTopic(manufacturer.id, topicId, { chatExcerpt });
+    } else {
+      onUpdateDealTopic(deal.id, topicId, { chatExcerpt });
+    }
+  };
+
+  const linkedTermField =
+    scope === "deal" && isDealTopic(topicId)
+      ? topicId === "moq" || topicId === "exclusivity" || topicId === "certification"
+        ? topicId
+        : null
+      : null;
+
+  return (
+    <div className="flex flex-col gap-0 px-4 py-4">
+      <Pane4Section id={PANE4_SECTION_IDS.status} title="ステータス">
+        <InlineFieldRow label="進捗">
+          <Select value={status} onValueChange={(v) => updateStatus(v ?? status)}>
+            <SelectTrigger
+              aria-label="交渉ステータス"
+              className="h-8 w-full bg-card hover:bg-accent/40"
+            >
+              <SelectValue>{TOPIC_STATUS_LABELS[status] ?? status}</SelectValue>
+            </SelectTrigger>
+            <SelectContent align="start">
+              {statusOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </InlineFieldRow>
       </Pane4Section>
+
+      {template && (
+        <>
+          <Separator />
+          <Pane4Section id={PANE4_SECTION_IDS.template} title="送付テンプレ">
+            <div className="flex flex-col gap-3">
+              <CopyTemplateButton text={template} />
+              <pre className="max-h-48 overflow-auto rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed whitespace-pre-wrap text-foreground">
+                {template}
+              </pre>
+            </div>
+          </Pane4Section>
+        </>
+      )}
 
       <Separator />
 
-      {/* 評価（4 観点 ★、編集可能。★ クリックで値設定 / × でリセット） */}
-      <Pane4Section id={PANE4_SECTION_IDS.m2.evaluation} title="評価">
-        <div className="flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-3">
-          {AXIS_ORDER.map((key) => (
-            <AxisScoreRow
-              key={key}
-              label={EVALUATION_AXIS[key]}
-              value={scorecard.axisScores[key]}
-              editable
-              onChange={(v) => onUpdateAxis(scorecard.stage, key, v)}
-              onReset={() => onUpdateAxis(scorecard.stage, key, null)}
+      <Pane4Section id={PANE4_SECTION_IDS.chat} title="トーク貼付・メモ">
+        <div className="flex flex-col gap-3">
+          <InlineFieldRow label="メモ">
+            <InlineTextareaField
+              value={progress?.memo ?? ""}
+              onSave={updateMemo}
+              ariaLabel="メモ"
             />
-          ))}
+          </InlineFieldRow>
+          <InlineFieldRow label="トーク抜粋">
+            <InlineTextareaField
+              value={progress?.chatExcerpt ?? ""}
+              onSave={updateChat}
+              ariaLabel="トーク抜粋"
+            />
+          </InlineFieldRow>
         </div>
       </Pane4Section>
 
-      <Separator />
+      {linkedTermField && (
+        <>
+          <Separator />
+          <Pane4Section id={PANE4_SECTION_IDS.terms} title="確定値">
+            <div className="flex flex-col gap-3">
+              <InlineFieldRow label={TERM_FIELD_LABELS[linkedTermField]}>
+                <InlineTextField
+                  value={deal.terms[linkedTermField].value}
+                  onSave={(v) => onUpdateDealTerms(deal.id, linkedTermField, v)}
+                  ariaLabel={TERM_FIELD_LABELS[linkedTermField]}
+                />
+              </InlineFieldRow>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    deal.terms[linkedTermField].confirmation === "confirmed"
+                      ? "default"
+                      : "secondary"
+                  }
+                  size="xs"
+                >
+                  {CONFIRMATION_LABELS[deal.terms[linkedTermField].confirmation]}
+                </Badge>
+                {deal.terms[linkedTermField].confirmation !== "confirmed" &&
+                  deal.terms[linkedTermField].value.trim() !== "" && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="xs"
+                      onClick={() => onConfirmDealTerm(deal.id, linkedTermField)}
+                    >
+                      確定する
+                    </Button>
+                  )}
+              </div>
+            </div>
+          </Pane4Section>
+        </>
+      )}
 
-      {/* 担当者のコメント（textarea） */}
-      <Pane4Section
-        id={PANE4_SECTION_IDS.m2.comment}
-        title="担当者のコメント"
-        className="gap-2"
-      >
-        <InlineTextareaField
-          value={scorecard.comment ?? ""}
-          onSave={(v) => onUpdateScorecardField(scorecard.stage, "comment", v)}
-          ariaLabel="担当者のコメント"
-        />
-      </Pane4Section>
-
-      <Separator />
-
-      {/* 要約（書類選考: 書類の要約 / 面接: 面接の要約） */}
-      <Pane4Section
-        id={PANE4_SECTION_IDS.m2.summary}
-        title={summaryHeading}
-        className="gap-2"
-      >
-        <InlineTextareaField
-          value={scorecard.summary ?? ""}
-          onSave={(v) => onUpdateScorecardField(scorecard.stage, "summary", v)}
-          ariaLabel={summaryHeading}
-        />
-      </Pane4Section>
-
-      <Separator />
-
-      {/* 添付（書類選考: 提出書類 / 面接: 添付）— `AttachmentList` を再利用 */}
-      <Pane4Section
-        id={PANE4_SECTION_IDS.m2.attachments}
-        title={attachmentHeading}
-      >
-        <AttachmentList items={scorecard.attachments} />
-      </Pane4Section>
+      {deal.changeLog.length > 0 && (
+        <>
+          <Separator />
+          <Pane4Section id={PANE4_SECTION_IDS.changelog} title="変更履歴">
+            <ul className="flex flex-col gap-2 text-xs">
+              {deal.changeLog.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-lg border border-border bg-card px-3 py-2"
+                >
+                  <p className="font-medium text-foreground">
+                    {TERM_FIELD_LABELS[entry.field as keyof typeof TERM_FIELD_LABELS] ??
+                      entry.field}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {entry.fromValue} → {entry.toValue}
+                  </p>
+                  <p className="text-muted-foreground">{entry.updatedAt}</p>
+                </li>
+              ))}
+            </ul>
+          </Pane4Section>
+        </>
+      )}
     </div>
   );
 }
 
-// ===== Pane 4 メイン =====
-
-/**
- * Pane 4: 選考ステージ詳細パネル（ADR-0015 §19 で候補者詳細を Pane 3 に移管）。
- *
- * - ヘッダー: ステージ名 + Pane4Toggle の 2 要素（◀ は撤廃）
- * - ステージ切替: `<Mode2StageDetail key={...}>` で再マウント
- * - ステージ未選択時（selectedDetail === null 想定、Phase 3C 暫定で type=profile も
- *   ステージなしとして扱う）: コンテンツなし、ヘッダーのみ
- */
 export function CandidateDetailPane({
-  selectedCandidateId,
-  scorecards,
+  deal,
+  manufacturer,
   selectedDetail,
   scrollAnchor,
   onScrollAnchorConsumed,
-  onUpdateAxis,
-  onUpdateScorecardField,
+  onUpdateDealTopic,
+  onUpdateManufacturerTopic,
+  onUpdateDealTerms,
+  onConfirmDealTerm,
   pane4Open,
   onTogglePane4,
 }: {
-  selectedCandidateId: string;
-  scorecards: Scorecard[];
+  deal: Deal;
+  manufacturer: Manufacturer;
   selectedDetail: SelectedDetail;
   scrollAnchor: string | null;
   onScrollAnchorConsumed: () => void;
-  onUpdateAxis: (stage: StageKey, axis: AxisKey, value: number | null) => void;
-  onUpdateScorecardField: (
-    stage: StageKey,
-    field: EditableScorecardKey,
+  onUpdateDealTopic: (
+    dealId: string,
+    topicId: string,
+    patch: Partial<Deal["topics"][string]>,
+  ) => void;
+  onUpdateManufacturerTopic: (
+    manufacturerId: string,
+    topicId: string,
+    patch: Partial<Manufacturer["topics"][string]>,
+  ) => void;
+  onUpdateDealTerms: (
+    dealId: string,
+    field: keyof DealTerms,
     value: string,
   ) => void;
+  onConfirmDealTerm: (dealId: string, field: keyof DealTerms) => void;
   pane4Open: boolean;
   onTogglePane4: () => void;
 }) {
   useEffect(() => {
     if (!scrollAnchor) return;
-    // 1 フレーム待つのは、Pane 4 が閉状態 → 開状態へ切り替わった直後に
-    // 対象セクションの DOM がレイアウトされるのを待つため。
-    // unmount された場合や anchor が変わった場合は cancel して、後続の
-    // `scrollIntoView` と `onScrollAnchorConsumed`（state setter）が走らないようにする。
     const id = requestAnimationFrame(() => {
       document
         .getElementById(scrollAnchor)
@@ -283,16 +312,15 @@ export function CandidateDetailPane({
   }, [scrollAnchor, onScrollAnchorConsumed]);
 
   const heading =
-    selectedDetail?.type === "stage"
-      ? (scorecards.find((s) => s.stage === selectedDetail.stage)?.label ??
-        "詳細")
-      : "ステージ詳細";
+    selectedDetail?.type === "topic"
+      ? getTopicLabel(selectedDetail.scope, selectedDetail.topicId)
+      : "交渉詳細";
 
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col border-l border-border bg-background",
-        "overflow-hidden transition-[width] duration-200 ease-linear",
+        "flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l border-border bg-background",
+        "transition-[width] duration-200 ease-linear",
         pane4Open ? "w-[400px]" : "w-12",
       )}
     >
@@ -304,20 +332,20 @@ export function CandidateDetailPane({
             </h2>
             <Pane4Toggle open={pane4Open} onToggle={onTogglePane4} />
           </header>
-
-          <ScrollArea className="min-h-0 flex-1">
-            {selectedDetail?.type === "stage" && (
-              <Mode2StageDetail
-                key={`${selectedCandidateId}-${selectedDetail.stage}`}
-                scorecard={
-                  scorecards.find((s) => s.stage === selectedDetail.stage) ??
-                  createMinimalScorecard(selectedDetail.stage)
-                }
-                onUpdateAxis={onUpdateAxis}
-                onUpdateScorecardField={onUpdateScorecardField}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {selectedDetail?.type === "topic" && (
+              <TopicDetail
+                key={`${deal.id}-${selectedDetail.scope}-${selectedDetail.topicId}`}
+                deal={deal}
+                manufacturer={manufacturer}
+                selectedDetail={selectedDetail}
+                onUpdateDealTopic={onUpdateDealTopic}
+                onUpdateManufacturerTopic={onUpdateManufacturerTopic}
+                onUpdateDealTerms={onUpdateDealTerms}
+                onConfirmDealTerm={onConfirmDealTerm}
               />
             )}
-          </ScrollArea>
+          </div>
         </>
       ) : (
         <div className="flex h-12 shrink-0 items-center justify-center border-b border-border">

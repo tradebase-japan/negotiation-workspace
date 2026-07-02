@@ -1,19 +1,16 @@
 [
   {
-    "id": "d-product",
-    "name": "プロダクト開発",
-    "positions": [
-      { "id": "p-fe", "name": "フロントエンドエンジニア", "count": 4 },
-      { "id": "p-be", "name": "バックエンドエンジニア", "count": 3 },
-      { "id": "p-design", "name": "デザイナー", "count": 2 }
+    "id": "d-china",
+    "name": "中国",
+    "manufacturers": [
+      { "id": "m-xfanic", "name": "Xfanic（深圳）", "count": 1 }
     ]
   },
   {
-    "id": "d-biz",
-    "name": "ビジネス",
-    "positions": [
-      { "id": "p-pm", "name": "プロダクトマネージャー", "count": 3 },
-      { "id": "p-sales", "name": "セールス", "count": 4 }
+    "id": "d-taiwan",
+    "name": "台湾",
+    "manufacturers": [
+      { "id": "m-taipei", "name": "台北ガジェット社", "count": 1 }
     ]
   }
 ]

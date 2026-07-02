@@ -2,7 +2,7 @@
 
 import { Settings } from "lucide-react";
 
-import { type Department } from "@/lib/schema";
+import { type Deal, type Region } from "@/lib/schema";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -18,13 +18,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { DealHeaderControls } from "@/components/workspace/DealHeaderControls";
 import { SettingsDialogContent } from "@/components/workspace/SettingsDialog";
 
 type GlobalHeaderProps = {
   departmentTitle: string;
   positionTitle: string;
-  candidateName: string;
-  departments: Department[];
+  deals: Deal[];
+  selectedDealId: string;
+  onSelectDeal: (id: string) => void;
+  onAddDeal: (productName: string) => void;
+  departments: Region[];
   onAddDepartment: (name: string) => void;
   onDeleteDepartment: (deptId: string) => void;
 };
@@ -32,7 +36,10 @@ type GlobalHeaderProps = {
 export function GlobalHeader({
   departmentTitle,
   positionTitle,
-  candidateName,
+  deals,
+  selectedDealId,
+  onSelectDeal,
+  onAddDeal,
   departments,
   onAddDepartment,
   onDeleteDepartment,
@@ -40,7 +47,7 @@ export function GlobalHeader({
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-3">
       <Breadcrumb
-        className="min-w-0 flex-1 overflow-hidden"
+        className="hidden min-w-0 shrink overflow-hidden sm:block"
         aria-label="パンくず"
       >
         <BreadcrumbList className="flex-nowrap text-[11px]">
@@ -48,17 +55,24 @@ export function GlobalHeader({
             <BreadcrumbLink>{departmentTitle}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem className="shrink-0">
-            <BreadcrumbLink>{positionTitle}</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
           <BreadcrumbItem className="min-w-0">
             <BreadcrumbPage className="truncate font-medium">
-              {candidateName}
+              {positionTitle}
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      <div className="min-w-0 flex-1 sm:hidden">
+        <p className="truncate text-sm font-medium">{positionTitle}</p>
+      </div>
+
+      <DealHeaderControls
+        deals={deals}
+        selectedDealId={selectedDealId}
+        onSelectDeal={onSelectDeal}
+        onAddDeal={onAddDeal}
+      />
 
       <Dialog>
         <Tooltip>

@@ -1,0 +1,55 @@
+[
+  {
+    "id": "m-xfanic",
+    "name": "Xfanic（深圳）",
+    "country": "中国",
+    "primaryChannel": "both",
+    "contactPerson": "曾春梅 (Tracy Zeng)",
+    "topics": {
+      "business_model": {
+        "status": "acknowledged",
+        "memo": "6/8 Teams面談済み。日本市場パートナーとしてTrade Baseの実績資料共有済み",
+        "chatExcerpt": "We understand that XFANIC may be evaluating multiple candidates for the Japanese market. However, we believe our understanding of Japanese consumers, crowdfunding expertise, and commitment to long-term brand building make us a strong partner for XFANIC.",
+        "updatedAt": "2026-06-08"
+      },
+      "crowdfunding": {
+        "status": "acknowledged",
+        "memo": "クラファン前提の市場検証アプローチを説明。Makuake手数料22%・マーケ費負担も伝達",
+        "chatExcerpt": "For crowdfunding projects in Japan, we need to invest significantly in marketing activities. In addition, crowdfunding platforms such as Makuake charge approximately 22% in fees.",
+        "updatedAt": "2026-06-09"
+      },
+      "four_step_channel": {
+        "status": "explained",
+        "memo": "Makuake→EC→量販→ギフトショーの流れはメール面談で言及。SmartView Dockの日本ポテンシャル共有",
+        "chatExcerpt": "Based on our market analysis and sales experience, we believe SmartView Dock has strong potential in Japan, particularly among professionals, creators, and AI-focused users.",
+        "updatedAt": "2026-06-08"
+      },
+      "cost_coverage": {
+        "status": "acknowledged",
+        "memo": "送料・関税・マーケ費は当社負担の方針を伝達済み",
+        "chatExcerpt": "We also cover international shipping costs, import duties, taxes, and domestic logistics expenses.",
+        "updatedAt": "2026-06-09"
+      },
+      "pre_marketing": {
+        "status": "explained",
+        "memo": "初回は在庫よりマーケ投資を優先する方針を説明",
+        "chatExcerpt": "Therefore, our priority at this stage is to invest in market development and brand awareness rather than holding a large amount of inventory.",
+        "updatedAt": "2026-06-09"
+      }
+    }
+  },
+  {
+    "id": "m-taipei",
+    "name": "台北ガジェット社",
+    "country": "台湾",
+    "primaryChannel": "line",
+    "contactPerson": "Wang Mei",
+    "topics": {
+      "business_model": { "status": "explained", "memo": "", "chatExcerpt": "", "updatedAt": "2026-06-01" },
+      "crowdfunding": { "status": "not_started", "memo": "", "chatExcerpt": "", "updatedAt": "" },
+      "four_step_channel": { "status": "not_started", "memo": "", "chatExcerpt": "", "updatedAt": "" },
+      "cost_coverage": { "status": "not_started", "memo": "", "chatExcerpt": "", "updatedAt": "" },
+      "pre_marketing": { "status": "not_started", "memo": "", "chatExcerpt": "", "updatedAt": "" }
+    }
+  }
+]

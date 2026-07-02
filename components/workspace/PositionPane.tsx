@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
-import { type Department } from "@/lib/schema";
+import { type Region } from "@/lib/schema";
 import { DeleteConfirmDialog } from "@/components/workspace/DeleteConfirmDialog";
 import {
   DropdownMenu,
@@ -30,18 +30,22 @@ import { AddItemDialog } from "@/components/workspace/AddItemDialog";
 
 type PositionPaneProps = {
   workspaceName: string;
-  departments: Department[];
-  selectedPositionName?: string;
+  departments: Region[];
+  selectedManufacturerId?: string;
   onAddPosition: (deptId: string, posName: string) => void;
   onDeletePosition: (deptId: string, posId: string) => void;
+  onSelectManufacturer: (manufacturerId: string) => void;
+  addPositionLabel?: string;
 };
 
 export function PositionPane({
   workspaceName,
   departments,
-  selectedPositionName,
+  selectedManufacturerId,
   onAddPosition,
   onDeletePosition,
+  onSelectManufacturer,
+  addPositionLabel = "メーカーを追加",
 }: PositionPaneProps) {
   const [addDialogDeptId, setAddDialogDeptId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -74,27 +78,28 @@ export function PositionPane({
                 {dept.name}
               </SidebarGroupLabel>
               <SidebarGroupAction
-                title={`${dept.name} にポジションを追加`}
+                title={`${dept.name} にメーカーを追加`}
                 onClick={() => setAddDialogDeptId(dept.id)}
                 className="w-6 rounded-[min(var(--radius-md),10px)] text-muted-foreground hover:bg-muted hover:text-foreground [&>svg]:size-3"
               >
                 <Plus />
-                <span className="sr-only">{dept.name} にポジションを追加</span>
+                <span className="sr-only">{dept.name} にメーカーを追加</span>
               </SidebarGroupAction>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {dept.positions.map((pos) => {
-                    const active = pos.name === selectedPositionName;
+                  {dept.manufacturers.map((mfr) => {
+                    const active = mfr.id === selectedManufacturerId;
                     return (
-                      <SidebarMenuItem key={pos.id}>
+                      <SidebarMenuItem key={mfr.id}>
                         <SidebarMenuButton
-                          tooltip={pos.name}
+                          tooltip={mfr.name}
                           isActive={active}
                           aria-current={active ? "page" : undefined}
+                          onClick={() => onSelectManufacturer(mfr.id)}
                         >
-                          <span className="truncate">{pos.name}</span>
+                          <span className="truncate">{mfr.name}</span>
                           <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-                            {pos.count}
+                            {mfr.count}
                           </span>
                         </SidebarMenuButton>
                         <DropdownMenu>
@@ -113,8 +118,8 @@ export function PositionPane({
                                 onSelect={() =>
                                   setDeleteTarget({
                                     deptId: dept.id,
-                                    posId: pos.id,
-                                    posName: pos.name,
+                                    posId: mfr.id,
+                                    posName: mfr.name,
                                   })
                                 }
                               >
@@ -140,11 +145,11 @@ export function PositionPane({
           onOpenChange={(open) => {
             if (!open) setAddDialogDeptId(null);
           }}
-          title="ポジションを追加"
-          description={`${addDialogDept.name} に新しいポジションを追加します`}
-          fieldLabel="ポジション名"
-          fieldId="pos-name"
-          placeholder="例: データエンジニア"
+          title={addPositionLabel}
+          description={`${addDialogDept.name} に新しいメーカーを追加します`}
+          fieldLabel="メーカー名"
+          fieldId="mfr-name"
+          placeholder="例: 深圳テック社"
           onAdd={(name) => onAddPosition(addDialogDept.id, name)}
         />
       )}
@@ -154,7 +159,7 @@ export function PositionPane({
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
-        title="ポジションを削除しますか？"
+        title="メーカーを削除しますか？"
         itemName={deleteTarget?.posName ?? ""}
         onConfirm={() => {
           if (deleteTarget) {
